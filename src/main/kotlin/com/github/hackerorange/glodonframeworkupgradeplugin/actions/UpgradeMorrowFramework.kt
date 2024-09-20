@@ -10,6 +10,7 @@ import com.intellij.openapi.vfs.VfsUtilCore
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.vfs.VirtualFileFilter
 import com.intellij.psi.*
+import com.intellij.psi.codeStyle.JavaCodeStyleManager
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.util.PsiUtilBase
 
@@ -72,6 +73,13 @@ class UpgradeMorrowFramework : AnAction() {
             if (currentFile.isDirectory) {
                 return@iterateChildrenRecursively true
             }
+
+            val entityWrapperClass = JavaPsiFacade.getInstance(project).findClass(
+                "com.baomidou.mybatisplus.mapper.EntityWrapper",
+                GlobalSearchScope.allScope(project)
+            )
+
+
             // 是 java 文件的话，更新 base directory
             if (currentFile.name.endsWith(".java")) {
                 val psiFile = PsiUtilBase.getPsiFile(project, currentFile)
@@ -80,6 +88,52 @@ class UpgradeMorrowFramework : AnAction() {
 
                     psiFile.accept(object : JavaRecursiveElementVisitor() {
 
+
+                        override fun visitNewExpression(expression: PsiNewExpression) {
+
+
+                            if (entityWrapperClass != null) {
+                                if (expression.type !is PsiClassType) return
+
+                                val resolve = (expression.type as PsiClassType).resolve() ?: return
+                                if (resolve == entityWrapperClass) {
+                                    val newExpression = expression
+                                    val containingFile = newExpression.containingFile
+
+                                    val newExpressionType = newExpression.type ?: return
+
+                                    if (newExpressionType !is PsiClassType) return
+                                    val substitutor = newExpressionType.resolveGenerics().substitutor
+                                    if (substitutor.substitutionMap.values.size != 1) return
+                                    val entityClassType = ArrayList(substitutor.substitutionMap.values)[0]
+
+                                    if (entityClassType !is PsiClassType) return
+                                    val entityClass = entityClassType.resolve() ?: return
+
+                                    var replaceExpression =
+                                        "new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<${entityClass.qualifiedName}>()\n"
+
+
+                                    val createExpressionFromText =
+                                        JavaPsiFacade.getInstance(project).elementFactory.createExpressionFromText(
+                                            replaceExpression,
+                                            newExpression
+                                        )
+
+
+                                    WriteCommandAction.runWriteCommandAction(project) {
+                                        newExpression.replace(createExpressionFromText)
+                                    }
+
+                                }
+
+                            }
+
+                            expression.classReference
+
+
+                            super.visitNewExpression(expression)
+                        }
 
                         override fun visitImportStatement(statement: PsiImportStatement) {
 
@@ -99,6 +153,8 @@ class UpgradeMorrowFramework : AnAction() {
                             super.visitImportStatement(statement)
                         }
                     })
+
+                    JavaCodeStyleManager.getInstance(project).shortenClassReferences(psiFile)
                 }
             }
             true
