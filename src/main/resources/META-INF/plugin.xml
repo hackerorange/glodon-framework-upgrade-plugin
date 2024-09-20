@@ -1,18 +1,28 @@
 <!-- Plugin Configuration File. Read more: https://plugins.jetbrains.com/docs/intellij/plugin-configuration-file.html -->
 <idea-plugin>
     <id>com.github.hackerorange.glodonframeworkupgradeplugin</id>
-    <name>glodon-framework-upgrade-plugin</name>
+    <name>广联达框架升级插件</name>
     <vendor>hackerorange</vendor>
 
     <depends>com.intellij.modules.platform</depends>
+    <depends>com.intellij.modules.java</depends>
 
     <resource-bundle>messages.MyBundle</resource-bundle>
 
     <extensions defaultExtensionNs="com.intellij">
-        <toolWindow factoryClass="com.github.hackerorange.glodonframeworkupgradeplugin.toolWindow.MyToolWindowFactory" id="MyToolWindow"/>
+        <toolWindow factoryClass="com.github.hackerorange.glodonframeworkupgradeplugin.toolWindow.MyToolWindowFactory"
+                    id="MyToolWindow"/>
     </extensions>
 
     <applicationListeners>
-        <listener class="com.github.hackerorange.glodonframeworkupgradeplugin.listeners.MyApplicationActivationListener" topic="com.intellij.openapi.application.ApplicationActivationListener"/>
+        <listener class="com.github.hackerorange.glodonframeworkupgradeplugin.listeners.MyApplicationActivationListener"
+                  topic="com.intellij.openapi.application.ApplicationActivationListener"/>
     </applicationListeners>
+    <actions>
+        <action id="com.github.hackerorange.glodonframeworkupgradeplugin.actions.UpgradeMorrowFramework"
+                class="com.github.hackerorange.glodonframeworkupgradeplugin.actions.UpgradeMorrowFramework"
+                text="UpgradeMorrowFramework" description="Upgrade glodon morrow framework from 3.4.0 to 5.0.0">
+            <add-to-group group-id="ToolsMenu" anchor="first"/>
+        </action>
+    </actions>
 </idea-plugin>
