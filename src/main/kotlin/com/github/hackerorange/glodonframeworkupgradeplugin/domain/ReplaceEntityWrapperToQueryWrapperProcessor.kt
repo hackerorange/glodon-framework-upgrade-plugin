@@ -157,3 +157,4 @@ class ReplaceEntityWrapperToQueryWrapperProcessor : PsiFileProcessor {
             }
         })
     }
+}
