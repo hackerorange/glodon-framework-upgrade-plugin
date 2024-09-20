@@ -17,6 +17,7 @@ import com.intellij.openapi.vfs.VirtualFileFilter
 import com.intellij.psi.PsiJavaFile
 import com.intellij.psi.codeStyle.JavaCodeStyleManager
 import com.intellij.psi.util.PsiUtilBase
+import com.intellij.remoteDev.util.createSubProgress
 
 
 class UpgradeMorrowFramework : AnAction() {
