@@ -79,7 +79,11 @@ class ReplaceEntityWrapperToQueryWrapperProcessor : PsiFileProcessor {
                         if (type1 is PsiClassType) {
                             val resolveGenerics = type1.resolveGenerics()
                             val currentClass = resolveGenerics.element ?: continue
-                            if (currentClass.isInheritor(oldEntityWrapperClass!!, true)) {
+                            if (currentClass == oldEntityWrapperClass || currentClass.isInheritor(
+                                    oldEntityWrapperClass!!,
+                                    true
+                                )
+                            ) {
                                 val substitutor = resolveGenerics.substitutor
                                 if (substitutor.substitutionMap.values.size != 1) return
                                 val entityClassType = ArrayList(substitutor.substitutionMap.values)[0]
