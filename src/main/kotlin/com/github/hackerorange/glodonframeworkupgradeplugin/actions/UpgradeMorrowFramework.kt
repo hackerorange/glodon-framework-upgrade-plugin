@@ -2,6 +2,7 @@ package com.github.hackerorange.glodonframeworkupgradeplugin.actions
 
 import com.github.hackerorange.glodonframeworkupgradeplugin.domain.ClassImportPsiFileProcessor
 import com.github.hackerorange.glodonframeworkupgradeplugin.domain.PsiFileProcessor
+import com.github.hackerorange.glodonframeworkupgradeplugin.domain.QueryWrapperOrderByProcessor
 import com.github.hackerorange.glodonframeworkupgradeplugin.domain.ReplaceEntityWrapperToQueryWrapperProcessor
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
@@ -26,10 +27,11 @@ class UpgradeMorrowFramework : AnAction() {
         val project = anActionEvent.project
             ?: return
 
-        var processors: ArrayList<PsiFileProcessor> = ArrayList()
+        val processors: ArrayList<PsiFileProcessor> = ArrayList()
 
         processors.add(ClassImportPsiFileProcessor())
         processors.add(ReplaceEntityWrapperToQueryWrapperProcessor())
+        processors.add(QueryWrapperOrderByProcessor())
 
         processors.forEach { it.init(project) }
 
