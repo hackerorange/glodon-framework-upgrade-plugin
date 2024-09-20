@@ -45,6 +45,9 @@ class QueryWrapperOrderByProcessor : PsiFileProcessor {
                 if (methodExpression.referenceName == "orderDesc") {
                     processOrderDesc(project, psiMethodCallExpression)
                 }
+                if (methodExpression.referenceName == "setSqlSelect") {
+                    processSetSelect(project, psiMethodCallExpression)
+                }
                 super.visitMethodCallExpression(psiMethodCallExpression)
             }
 
@@ -63,6 +66,23 @@ class QueryWrapperOrderByProcessor : PsiFileProcessor {
             val psiIdentifier = filter[0]
 
             val createIdentifier = JavaPsiFacade.getInstance(project).elementFactory.createIdentifier("orderByAsc")
+            WriteCommandAction.runWriteCommandAction(project) {
+                psiIdentifier.replace(createIdentifier)
+            }
+        }
+    }
+
+    private fun processSetSelect(project: Project, psiMethodCallExpression: PsiMethodCallExpression) {
+        val methodExpression = psiMethodCallExpression.methodExpression
+        println(methodExpression.referenceName)
+
+        val filter = methodExpression.children.filterIsInstance<PsiIdentifier>()
+
+
+        if (filter.size == 1) {
+            val psiIdentifier = filter[0]
+
+            val createIdentifier = JavaPsiFacade.getInstance(project).elementFactory.createIdentifier("select")
             WriteCommandAction.runWriteCommandAction(project) {
                 psiIdentifier.replace(createIdentifier)
             }
