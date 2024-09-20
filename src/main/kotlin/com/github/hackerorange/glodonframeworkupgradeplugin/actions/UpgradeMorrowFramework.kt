@@ -9,29 +9,60 @@ import com.intellij.openapi.project.rootManager
 import com.intellij.openapi.vfs.VfsUtilCore
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.vfs.VirtualFileFilter
-import com.intellij.psi.JavaPsiFacade
-import com.intellij.psi.JavaRecursiveElementVisitor
-import com.intellij.psi.PsiImportStatement
-import com.intellij.psi.PsiJavaFile
+import com.intellij.psi.*
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.util.PsiUtilBase
 
 private const val NEW_BASE_MAPPER_QNAME = "com.baomidou.mybatisplus.core.mapper.BaseMapper"
+private const val NEW_PAGE_QNAME = "com.baomidou.mybatisplus.extension.plugins.pagination.Page"
 
 class UpgradeMorrowFramework : AnAction() {
 
+
+    companion object {
+        private val importReplace: HashMap<String, String> = HashMap()
+
+        init {
+            importReplace["com.baomidou.mybatisplus.mapper.BaseMapper"] =
+                "com.baomidou.mybatisplus.core.mapper.BaseMapper"
+
+            importReplace["com.baomidou.mybatisplus.plugins.Page"] =
+                "com.baomidou.mybatisplus.extension.plugins.pagination.Page"
+        }
+
+    }
+
     override fun actionPerformed(anActionEvent: AnActionEvent) {
         val project = anActionEvent.project
+        val classQNameToReplaceClassMap: HashMap<String, PsiClass> = HashMap()
         if (project?.modules != null) {
+
+            for (mutableEntry in importReplace) {
+
+                val newBaseMapperClass = JavaPsiFacade.getInstance(project).findClass(
+                    mutableEntry.key,
+                    GlobalSearchScope.allScope(project)
+                )
+
+                if (newBaseMapperClass != null) {
+                    classQNameToReplaceClassMap[mutableEntry.key] = newBaseMapperClass
+                }
+            }
+
+
             for (module in project.modules) {
                 module.rootManager.sourceRoots.forEach {
-                    processSourceFiles(project, it)
+                    processSourceFiles(project, it, classQNameToReplaceClassMap)
                 }
             }
         }
     }
 
-    private fun processSourceFiles(project: Project, sourceFile: VirtualFile) {
+    private fun processSourceFiles(
+        project: Project,
+        sourceFile: VirtualFile,
+        classQNameToReplaceClassMap: HashMap<String, PsiClass>
+    ) {
         VfsUtilCore.iterateChildrenRecursively(sourceFile, VirtualFileFilter.ALL) { currentFile: VirtualFile ->
 // 不是有效的文件，继续后面的文件
             if (!currentFile.isValid) {
@@ -46,20 +77,15 @@ class UpgradeMorrowFramework : AnAction() {
                 val psiFile = PsiUtilBase.getPsiFile(project, currentFile)
                 if (psiFile is PsiJavaFile) {
 
-                    val newBaseMapperClass = JavaPsiFacade.getInstance(project).findClass(
-                        NEW_BASE_MAPPER_QNAME,
-                        GlobalSearchScope.allScope(project)
-                    )
 
                     psiFile.accept(object : JavaRecursiveElementVisitor() {
 
 
                         override fun visitImportStatement(statement: PsiImportStatement) {
 
-                            println(statement.text)
-
-                            if (statement.text == "import com.baomidou.mybatisplus.mapper.BaseMapper;") {
-                                if (newBaseMapperClass != null) {
+                            for (item in classQNameToReplaceClassMap) {
+                                if (statement.text == "import ${item.key};") {
+                                    val newBaseMapperClass = item.value
                                     val createImportStatement =
                                         JavaPsiFacade.getInstance(project).elementFactory.createImportStatement(
                                             newBaseMapperClass
@@ -69,7 +95,6 @@ class UpgradeMorrowFramework : AnAction() {
                                     }
                                 }
                             }
-
 
                             super.visitImportStatement(statement)
                         }
