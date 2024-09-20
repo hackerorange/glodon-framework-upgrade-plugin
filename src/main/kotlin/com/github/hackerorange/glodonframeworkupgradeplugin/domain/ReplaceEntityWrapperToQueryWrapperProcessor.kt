@@ -7,80 +7,112 @@ import com.intellij.psi.search.GlobalSearchScope
 
 class ReplaceEntityWrapperToQueryWrapperProcessor : PsiFileProcessor {
 
-    private var entityWrapperClass: PsiClass? = null
-    private val importReplace = HashMap<String, String>()
-
-    init {
-        importReplace["com.baomidou.mybatisplus.mapper.BaseMapper"] =
-            "com.baomidou.mybatisplus.core.mapper.BaseMapper"
-        importReplace["com.baomidou.mybatisplus.plugins.Page"] =
-            "com.baomidou.mybatisplus.extension.plugins.pagination.Page"
-    }
+    private var oldEntityWrapperClass: PsiClass? = null
+    private var newEntityWrapperClass: PsiClass? = null
 
     override fun processPsiFile(project: Project, psiFile: PsiFile) {
-        val classQNameToReplaceClassMap: HashMap<String, PsiClass> = HashMap()
-        for (mutableEntry in importReplace) {
-            val newBaseMapperClass = JavaPsiFacade.getInstance(project).findClass(
-                mutableEntry.value,
-                GlobalSearchScope.allScope(project)
-            )
-
-            if (newBaseMapperClass != null) {
-                classQNameToReplaceClassMap[mutableEntry.key] = newBaseMapperClass
-            }
-        }
 
 
         psiFile.accept(object : JavaRecursiveElementVisitor() {
 
-            override fun visitNewExpression(expression: PsiNewExpression) {
+            override fun visitNewExpression(psiNewExpression: PsiNewExpression) {
 
-                if (entityWrapperClass != null) {
-                    if (expression.type !is PsiClassType) return
-
-                    val resolve = (expression.type as PsiClassType).resolve() ?: return
-                    if (resolve == entityWrapperClass) {
-                        val newExpression = expression
-
-                        val newExpressionType = newExpression.type ?: return
-
-                        if (newExpressionType !is PsiClassType) return
-                        val substitutor = newExpressionType.resolveGenerics().substitutor
-                        if (substitutor.substitutionMap.values.size != 1) return
-                        val entityClassType = ArrayList(substitutor.substitutionMap.values)[0]
-
-                        if (entityClassType !is PsiClassType) return
-                        val entityClass = entityClassType.resolve() ?: return
-
-                        var replaceExpression =
-                            "new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<${entityClass.qualifiedName}>()\n"
+                if (oldEntityWrapperClass == null) {
+                    return
+                }
+                if (newEntityWrapperClass == null) {
+                    return
+                }
 
 
-                        val createExpressionFromText =
-                            JavaPsiFacade.getInstance(project).elementFactory.createExpressionFromText(
-                                replaceExpression,
-                                newExpression
-                            )
+                if (psiNewExpression.type !is PsiClassType) return
 
-                        WriteCommandAction.runWriteCommandAction(project) {
-                            newExpression.replace(createExpressionFromText)
-                        }
+                val resolve = (psiNewExpression.type as PsiClassType).resolve() ?: return
+                if (resolve == oldEntityWrapperClass) {
 
+                    val newExpressionType = psiNewExpression.type ?: return
+
+                    if (newExpressionType !is PsiClassType) return
+                    val substitutor = newExpressionType.resolveGenerics().substitutor
+                    if (substitutor.substitutionMap.values.size != 1) return
+                    val entityClassType = ArrayList(substitutor.substitutionMap.values)[0]
+
+                    if (entityClassType !is PsiClassType) return
+                    val entityClass = entityClassType.resolve() ?: return
+
+                    var replaceExpression =
+                        "new ${newEntityWrapperClass!!.qualifiedName}<${entityClass.qualifiedName}>()\n"
+
+
+                    val createExpressionFromText =
+                        JavaPsiFacade.getInstance(project).elementFactory.createExpressionFromText(
+                            replaceExpression,
+                            psiNewExpression
+                        )
+
+                    WriteCommandAction.runWriteCommandAction(project) {
+                        psiNewExpression.replace(createExpressionFromText)
                     }
 
                 }
 
-                expression.classReference
+                psiNewExpression.classReference
 
 
-                super.visitNewExpression(expression)
+                super.visitNewExpression(psiNewExpression)
+            }
+
+            override fun visitDeclarationStatement(psiDeclarationStatement: PsiDeclarationStatement) {
+                if (oldEntityWrapperClass == null) {
+                    return
+                }
+                if (newEntityWrapperClass == null) {
+                    return
+                }
+
+                for (declaredElement in psiDeclarationStatement.declaredElements) {
+
+                    if (declaredElement is PsiVariable) {
+                        val psiTypeElement = declaredElement.typeElement ?: continue
+
+                        val type1 = psiTypeElement.type
+                        if (type1 is PsiClassType) {
+                            val resolveGenerics = type1.resolveGenerics()
+                            val currentClass = resolveGenerics.element ?: continue
+                            if (currentClass.isInheritor(oldEntityWrapperClass!!, true)) {
+                                val substitutor = resolveGenerics.substitutor
+                                if (substitutor.substitutionMap.values.size != 1) return
+                                val entityClassType = ArrayList(substitutor.substitutionMap.values)[0]
+
+                                val newType =
+                                    JavaPsiFacade.getInstance(project).elementFactory.createTypeFromText(
+                                        newEntityWrapperClass!!.qualifiedName + "<${entityClassType.canonicalText}>",
+                                        null
+                                    )
+
+                                val createTypeElement =
+                                    JavaPsiFacade.getInstance(project).elementFactory.createTypeElement(newType)
+
+                                WriteCommandAction.runWriteCommandAction(project) {
+                                    psiTypeElement.replace(createTypeElement)
+                                }
+                            }
+                        }
+                    }
+                }
+
+                super.visitDeclarationStatement(psiDeclarationStatement)
             }
         })
     }
 
     override fun init(project: Project) {
-        entityWrapperClass = JavaPsiFacade.getInstance(project).findClass(
+        oldEntityWrapperClass = JavaPsiFacade.getInstance(project).findClass(
             "com.baomidou.mybatisplus.mapper.EntityWrapper",
+            GlobalSearchScope.allScope(project)
+        )
+        newEntityWrapperClass = JavaPsiFacade.getInstance(project).findClass(
+            "com.baomidou.mybatisplus.core.conditions.query.QueryWrapper",
             GlobalSearchScope.allScope(project)
         )
     }
