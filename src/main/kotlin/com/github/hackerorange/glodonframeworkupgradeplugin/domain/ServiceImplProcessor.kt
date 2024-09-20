@@ -28,7 +28,15 @@ class ServiceImplProcessor : PsiFileProcessor {
                             val resolveMethod = expression.resolveMethod()
 
                             if (resolveMethod != null) {
-                                println(resolveMethod)
+                                if (oldServiceImplClass == resolveMethod.containingClass) {
+                                    println(resolveMethod)
+                                    if (expression.methodExpression.referenceName == "insert") {
+
+                                        processServiceInsertMethodCall(project, expression)
+
+                                    }
+
+                                }
                             }
 
                             super.visitMethodCallExpression(expression)
@@ -61,6 +69,19 @@ class ServiceImplProcessor : PsiFileProcessor {
         }
 
 
+    }
+
+    private fun processServiceInsertMethodCall(project: Project, expression: PsiMethodCallExpression) {
+        val filter = expression.methodExpression.children.filterIsInstance<PsiIdentifier>()
+        if (filter.size == 1) {
+
+            val psiIdentifier = filter[0]
+
+            WriteCommandAction.runWriteCommandAction(project) {
+                val methodNewIdentity = JavaPsiFacade.getInstance(project).elementFactory.createIdentifier("save")
+                psiIdentifier.replace(methodNewIdentity);
+            }
+        }
     }
 
     override fun init(project: Project) {
