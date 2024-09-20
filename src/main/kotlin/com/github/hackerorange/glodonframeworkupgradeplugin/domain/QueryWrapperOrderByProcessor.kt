@@ -4,6 +4,7 @@ import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.project.Project
 import com.intellij.psi.*
 import com.intellij.psi.search.GlobalSearchScope
+import com.intellij.util.SlowOperations
 
 class QueryWrapperOrderByProcessor : PsiFileProcessor {
 
@@ -149,7 +150,9 @@ class QueryWrapperOrderByProcessor : PsiFileProcessor {
                     argumentList.add(psiExpressions[1])
                     argumentList.add(psiExpressions[0])
                 }
+                SlowOperations.assertSlowOperationsAreAllowed()
             }
+
         }
     }
 
