@@ -12,7 +12,13 @@ class ReplaceEntityWrapperToQueryWrapperProcessor : PsiFileProcessor {
 
     override fun processPsiFile(project: Project, psiFile: PsiFile) {
 
+        processDeclarationStatement(psiFile, project)
 
+        processNewExpressionStatement(psiFile, project)
+
+    }
+
+    private fun processNewExpressionStatement(psiFile: PsiFile, project: Project) {
         psiFile.accept(object : JavaRecursiveElementVisitor() {
 
             override fun visitNewExpression(psiNewExpression: PsiNewExpression) {
@@ -24,10 +30,19 @@ class ReplaceEntityWrapperToQueryWrapperProcessor : PsiFileProcessor {
                     return
                 }
 
+                var expressionRealType: PsiType?
 
-                if (psiNewExpression.type !is PsiClassType) return
+                if (psiNewExpression.parent is PsiLocalVariable) {
+                    val realType = (psiNewExpression.parent as PsiLocalVariable).type
+                    expressionRealType = realType
+                } else {
+                    expressionRealType = psiNewExpression.type
+                }
 
-                val resolve = (psiNewExpression.type as PsiClassType).resolve() ?: return
+
+                if (expressionRealType !is PsiClassType) return
+
+                val resolve = expressionRealType.resolve() ?: return
                 if (resolve == oldEntityWrapperClass || resolve.isInheritor(oldEntityWrapperClass!!, true)) {
 
                     val newExpressionType = psiNewExpression.type ?: return
@@ -57,10 +72,27 @@ class ReplaceEntityWrapperToQueryWrapperProcessor : PsiFileProcessor {
                 }
 
                 psiNewExpression.classReference
-
-
                 super.visitNewExpression(psiNewExpression)
             }
+        })
+    }
+
+
+    override fun init(project: Project) {
+        oldEntityWrapperClass = JavaPsiFacade.getInstance(project).findClass(
+            "com.baomidou.mybatisplus.mapper.Wrapper",
+            GlobalSearchScope.allScope(project)
+        )
+        newEntityWrapperClass = JavaPsiFacade.getInstance(project).findClass(
+            "com.baomidou.mybatisplus.core.conditions.query.QueryWrapper",
+            GlobalSearchScope.allScope(project)
+        )
+    }
+
+
+    private fun processDeclarationStatement(psiFile: PsiFile, project: Project) {
+        psiFile.accept(object : JavaRecursiveElementVisitor() {
+
 
             override fun visitDeclarationStatement(psiDeclarationStatement: PsiDeclarationStatement) {
                 if (oldEntityWrapperClass == null) {
@@ -125,16 +157,3 @@ class ReplaceEntityWrapperToQueryWrapperProcessor : PsiFileProcessor {
             }
         })
     }
-
-    override fun init(project: Project) {
-        oldEntityWrapperClass = JavaPsiFacade.getInstance(project).findClass(
-            "com.baomidou.mybatisplus.mapper.Wrapper",
-            GlobalSearchScope.allScope(project)
-        )
-        newEntityWrapperClass = JavaPsiFacade.getInstance(project).findClass(
-            "com.baomidou.mybatisplus.core.conditions.query.QueryWrapper",
-            GlobalSearchScope.allScope(project)
-        )
-    }
-
-}
