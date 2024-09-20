@@ -1,6 +1,7 @@
 package com.github.hackerorange.glodonframeworkupgradeplugin.actions
 
 import com.github.hackerorange.glodonframeworkupgradeplugin.domain.*
+import com.intellij.codeInsight.actions.OptimizeImportsProcessor
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.command.WriteCommandAction
@@ -10,9 +11,11 @@ import com.intellij.openapi.project.rootManager
 import com.intellij.openapi.vfs.VfsUtilCore
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.vfs.VirtualFileFilter
+import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.PsiJavaFile
 import com.intellij.psi.codeStyle.JavaCodeStyleManager
 import com.intellij.psi.util.PsiUtilBase
+import com.intellij.util.DocumentUtil
 
 
 class UpgradeMorrowFramework : AnAction() {
@@ -82,5 +85,6 @@ class UpgradeMorrowFramework : AnAction() {
         WriteCommandAction.runWriteCommandAction(project) {
             JavaCodeStyleManager.getInstance(project).shortenClassReferences(psiJavaFile)
         }
+        DocumentUtil.writeInRunUndoTransparentAction { OptimizeImportsProcessor(project, psiJavaFile).run() }
     }
 }
