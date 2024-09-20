@@ -24,20 +24,13 @@ class NewMapperPageResultProcessor : PsiFileProcessor {
                 if (resolveMethod != null) {
                     if (newBaseMapper == resolveMethod.containingClass) {
                         if (psiMethodCallExpression.methodExpression.referenceName == "selectPage") {
-                            val filter =
-                                psiMethodCallExpression.methodExpression.children.filterIsInstance<PsiIdentifier>()
-                            if (filter.size == 1) {
-
-                                val psiIdentifier = filter[0]
-
-                                WriteCommandAction.runWriteCommandAction(project) {
-                                    val methodNewIdentity =
-                                        JavaPsiFacade.getInstance(project).elementFactory.createExpressionFromText(
-                                            "${psiMethodCallExpression.text}.getRecords()",
-                                            psiMethodCallExpression
-                                        )
-                                    psiIdentifier.replace(methodNewIdentity);
-                                }
+                            WriteCommandAction.runWriteCommandAction(project) {
+                                val methodNewIdentity =
+                                    JavaPsiFacade.getInstance(project).elementFactory.createExpressionFromText(
+                                        "${psiMethodCallExpression.text}.getRecords()",
+                                        psiMethodCallExpression
+                                    )
+                                psiMethodCallExpression.replace(methodNewIdentity);
                             }
                         }
                     }
