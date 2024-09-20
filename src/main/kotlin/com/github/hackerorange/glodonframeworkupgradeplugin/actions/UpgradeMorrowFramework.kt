@@ -154,7 +154,9 @@ class UpgradeMorrowFramework : AnAction() {
                         }
                     })
 
-                    JavaCodeStyleManager.getInstance(project).shortenClassReferences(psiFile)
+                    WriteCommandAction.runWriteCommandAction(project) {
+                        JavaCodeStyleManager.getInstance(project).shortenClassReferences(psiFile)
+                    }
                 }
             }
             true
