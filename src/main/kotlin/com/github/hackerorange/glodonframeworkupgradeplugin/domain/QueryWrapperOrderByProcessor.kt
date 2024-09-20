@@ -39,11 +39,49 @@ class QueryWrapperOrderByProcessor : PsiFileProcessor {
                 if (methodExpression.referenceName == "orderBy") {
                     processOrderBy(project, psiMethodCallExpression)
                 }
+                if (methodExpression.referenceName == "orderAsc") {
+                    processOrderAsc(project, psiMethodCallExpression)
+                }
+                if (methodExpression.referenceName == "orderDesc") {
+                    processOrderDesc(project, psiMethodCallExpression)
+                }
                 super.visitMethodCallExpression(psiMethodCallExpression)
             }
 
 
         })
+    }
+
+    private fun processOrderAsc(project: Project, psiMethodCallExpression: PsiMethodCallExpression) {
+        val methodExpression = psiMethodCallExpression.methodExpression
+        println(methodExpression.referenceName)
+
+        val filter = methodExpression.children.filterIsInstance<PsiIdentifier>()
+
+
+        if (filter.size == 1) {
+            val psiIdentifier = filter[0]
+
+            val createIdentifier = JavaPsiFacade.getInstance(project).elementFactory.createIdentifier("orderByAsc")
+            WriteCommandAction.runWriteCommandAction(project) {
+                psiIdentifier.replace(createIdentifier)
+            }
+        }
+    }
+
+    private fun processOrderDesc(project: Project, psiMethodCallExpression: PsiMethodCallExpression) {
+        val methodExpression = psiMethodCallExpression.methodExpression
+
+        val filter = methodExpression.children.filterIsInstance<PsiIdentifier>()
+
+        if (filter.size == 1) {
+            val psiIdentifier = filter[0]
+
+            val createIdentifier = JavaPsiFacade.getInstance(project).elementFactory.createIdentifier("orderByDesc")
+            WriteCommandAction.runWriteCommandAction(project) {
+                psiIdentifier.replace(createIdentifier)
+            }
+        }
     }
 
     private fun processOrderBy(project: Project, psiMethodCallExpression: PsiMethodCallExpression) {
