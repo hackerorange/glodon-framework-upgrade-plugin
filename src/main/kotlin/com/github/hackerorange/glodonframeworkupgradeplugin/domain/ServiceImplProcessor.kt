@@ -39,6 +39,19 @@ class ServiceImplProcessor : PsiFileProcessor {
                                     if (expression.methodExpression.referenceName == "deleteById") {
                                         renameMethod(project, expression, "removeById")
                                     }
+                                    if (expression.methodExpression.referenceName == "selectList") {
+
+                                        val reference = expression.methodExpression.reference
+
+                                        WriteCommandAction.runWriteCommandAction(project) {
+                                            val createReferenceFromText =
+                                                JavaPsiFacade.getInstance(project).elementFactory.createReferenceFromText(
+                                                    "baseMapper",
+                                                    null
+                                                )
+                                            reference?.element?.replace(createReferenceFromText)
+                                        }
+                                    }
 
                                 }
                             }

@@ -3,11 +3,7 @@ package com.github.hackerorange.glodonframeworkupgradeplugin.actions
 import com.github.hackerorange.glodonframeworkupgradeplugin.domain.*
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
-import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.command.WriteCommandAction
-import com.intellij.openapi.progress.ProgressIndicator
-import com.intellij.openapi.progress.ProgressManager
-import com.intellij.openapi.progress.Task
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.project.modules
 import com.intellij.openapi.project.rootManager
@@ -17,7 +13,6 @@ import com.intellij.openapi.vfs.VirtualFileFilter
 import com.intellij.psi.PsiJavaFile
 import com.intellij.psi.codeStyle.JavaCodeStyleManager
 import com.intellij.psi.util.PsiUtilBase
-import com.intellij.remoteDev.util.createSubProgress
 
 
 class UpgradeMorrowFramework : AnAction() {
@@ -36,32 +31,17 @@ class UpgradeMorrowFramework : AnAction() {
 
         processors.forEach { it.init(project) }
 
-        ApplicationManager.getApplication().invokeLater {
-            ProgressManager.getInstance()
-                .run(object :
-                    Task.Backgroundable(anActionEvent.project, "Upgrading Morrow Framework from [v3.4.0] to [5.0.0]") {
-                    override fun run(indicator: ProgressIndicator) {
-                        val modules = project.modules
-                        if (modules.isNotEmpty()) {
-                            for ((index, module) in modules.withIndex()) {
-                                indicator.fraction = index / (modules.size.toDouble())
-                                module.rootManager.sourceRoots.forEach {
-                                    processSourceFiles(project, it, processors, indicator)
-                                }
-                            }
-                        }
-
-                    }
-                })
+        for (module in project.modules) {
+            module.rootManager.sourceRoots.forEach {
+                processSourceFiles(project, it, processors)
+            }
         }
-
     }
 
     private fun processSourceFiles(
         project: Project,
         sourceFile: VirtualFile,
-        processors: ArrayList<PsiFileProcessor>,
-        indicator: ProgressIndicator
+        processors: ArrayList<PsiFileProcessor>
     ) {
         VfsUtilCore.iterateChildrenRecursively(sourceFile, VirtualFileFilter.ALL) { currentFile: VirtualFile ->
 
@@ -83,7 +63,6 @@ class UpgradeMorrowFramework : AnAction() {
             if (psiFile !is PsiJavaFile) {
                 return@iterateChildrenRecursively true
             }
-            indicator.text2 = "Upgrading Java File ${currentFile.canonicalPath}"
             processJavaFile(project, processors, psiFile)
             true
         }
