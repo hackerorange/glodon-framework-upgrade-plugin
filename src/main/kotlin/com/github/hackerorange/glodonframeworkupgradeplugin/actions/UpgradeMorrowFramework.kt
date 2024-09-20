@@ -4,6 +4,9 @@ import com.github.hackerorange.glodonframeworkupgradeplugin.domain.*
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.command.WriteCommandAction
+import com.intellij.openapi.progress.ProgressIndicator
+import com.intellij.openapi.progress.ProgressManager
+import com.intellij.openapi.progress.Task
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.project.modules
 import com.intellij.openapi.project.rootManager
@@ -31,17 +34,26 @@ class UpgradeMorrowFramework : AnAction() {
 
         processors.forEach { it.init(project) }
 
-        for (module in project.modules) {
-            module.rootManager.sourceRoots.forEach {
-                processSourceFiles(project, it, processors)
-            }
-        }
+        ProgressManager.getInstance()
+            .run(object :
+                Task.Backgroundable(anActionEvent.project, "Upgrading Morrow Framework from [v3.4.0] to [5.0.0]") {
+                override fun run(indicator: ProgressIndicator) {
+                    for (module in project.modules) {
+                        module.rootManager.sourceRoots.forEach {
+                            processSourceFiles(project, it, processors, indicator)
+                        }
+                    }
+                }
+            })
+
+
     }
 
     private fun processSourceFiles(
         project: Project,
         sourceFile: VirtualFile,
-        processors: ArrayList<PsiFileProcessor>
+        processors: ArrayList<PsiFileProcessor>,
+        indicator: ProgressIndicator
     ) {
         VfsUtilCore.iterateChildrenRecursively(sourceFile, VirtualFileFilter.ALL) { currentFile: VirtualFile ->
 
@@ -63,6 +75,7 @@ class UpgradeMorrowFramework : AnAction() {
             if (psiFile !is PsiJavaFile) {
                 return@iterateChildrenRecursively true
             }
+            indicator.text2 = "Upgrading Java File ${currentFile.canonicalPath}"
             processJavaFile(project, processors, psiFile)
             true
         }
