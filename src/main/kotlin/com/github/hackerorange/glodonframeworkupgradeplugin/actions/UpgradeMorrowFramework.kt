@@ -17,6 +17,7 @@ import com.intellij.openapi.vfs.VirtualFileFilter
 import com.intellij.psi.PsiJavaFile
 import com.intellij.psi.codeStyle.JavaCodeStyleManager
 import com.intellij.psi.util.PsiUtilBase
+import com.intellij.remoteDev.util.createSubProgress
 
 
 class UpgradeMorrowFramework : AnAction() {
@@ -39,22 +40,25 @@ class UpgradeMorrowFramework : AnAction() {
             .run(object :
                 Task.Backgroundable(anActionEvent.project, "Upgrading Morrow Framework from [v3.4.0] to [5.0.0]") {
                 override fun run(indicator: ProgressIndicator) {
-                    val psiJavaFileList: java.util.ArrayList<PsiJavaFile> = ArrayList()
+                    ApplicationManager.getApplication().invokeLater {
+                        val psiJavaFileList: java.util.ArrayList<PsiJavaFile> = ArrayList()
 
-                    for (module in project.modules) {
-                        module.rootManager.sourceRoots.forEach {
-                            indicator.text = "Preparing all java file"
-                            psiJavaFileList.addAll(processSourceFiles(project, it, processors, indicator))
+                        for (module in project.modules) {
+                            module.rootManager.sourceRoots.forEach {
+                                indicator.text = "Preparing all java file"
+                                psiJavaFileList.addAll(processSourceFiles(project, it, processors, indicator))
+                            }
                         }
-                    }
 
-                    psiJavaFileList.indices.forEach {
-                        val psiJavaFile = psiJavaFileList[it]
-                        indicator.isIndeterminate = false
-                        indicator.fraction = it / psiJavaFileList.size.toDouble()
-                        indicator.text2 =
-                            "Upgrading Java File ${psiJavaFile.containingFile.virtualFile.canonicalPath}"
-                        processJavaFile(project, processors, psiJavaFile)
+                        psiJavaFileList.indices.forEach {
+                            val psiJavaFile = psiJavaFileList[it]
+                            indicator.isIndeterminate = false
+                            indicator.fraction = it / psiJavaFileList.size.toDouble()
+                            indicator.text2 =
+                                "Upgrading Java File ${psiJavaFile.containingFile.virtualFile.canonicalPath}"
+                            processJavaFile(project, processors, psiJavaFile)
+                        }
+
                     }
                 }
             })
@@ -87,13 +91,12 @@ class UpgradeMorrowFramework : AnAction() {
                 return@iterateChildrenRecursively true
             }
 
-            ApplicationManager.getApplication().run {
-                val psiFile = PsiUtilBase.getPsiFile(project, currentFile)
-                if (psiFile !is PsiJavaFile) {
-                    return@iterateChildrenRecursively true
-                }
-                javaFiles.add(psiFile)
+            val psiFile = PsiUtilBase.getPsiFile(project, currentFile)
+            if (psiFile !is PsiJavaFile) {
+                return@iterateChildrenRecursively true
             }
+
+            javaFiles.add(psiFile)
             true
         }
 
