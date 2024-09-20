@@ -19,12 +19,11 @@ class ClassImportPsiFileProcessor : PsiFileProcessor {
                 for (item in classQNameToReplaceClassMap) {
                     if (statement.text == "import ${item.key};") {
                         val newBaseMapperClass = item.value
-
+                        val createImportStatement =
+                            JavaPsiFacade.getInstance(project).elementFactory.createImportStatement(
+                                newBaseMapperClass
+                            )
                         WriteCommandAction.runWriteCommandAction(project) {
-                            val createImportStatement =
-                                JavaPsiFacade.getInstance(project).elementFactory.createImportStatement(
-                                    newBaseMapperClass
-                                )
                             statement.replace(createImportStatement)
                         }
                     }

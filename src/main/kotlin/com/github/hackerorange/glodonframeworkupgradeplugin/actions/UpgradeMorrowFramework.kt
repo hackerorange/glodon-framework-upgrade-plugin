@@ -87,11 +87,12 @@ class UpgradeMorrowFramework : AnAction() {
                 return@iterateChildrenRecursively true
             }
 
-            ApplicationManager.getApplication().runReadAction {
+            ApplicationManager.getApplication().run {
                 val psiFile = PsiUtilBase.getPsiFile(project, currentFile)
-                if (psiFile is PsiJavaFile) {
-                    javaFiles.add(psiFile)
+                if (psiFile !is PsiJavaFile) {
+                    return@iterateChildrenRecursively true
                 }
+                javaFiles.add(psiFile)
             }
             true
         }
