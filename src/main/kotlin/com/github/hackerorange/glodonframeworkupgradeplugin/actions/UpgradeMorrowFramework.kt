@@ -3,6 +3,7 @@ package com.github.hackerorange.glodonframeworkupgradeplugin.actions
 import com.github.hackerorange.glodonframeworkupgradeplugin.domain.*
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.progress.ProgressIndicator
 import com.intellij.openapi.progress.ProgressManager
@@ -34,18 +35,19 @@ class UpgradeMorrowFramework : AnAction() {
 
         processors.forEach { it.init(project) }
 
-        ProgressManager.getInstance()
-            .run(object :
-                Task.Backgroundable(anActionEvent.project, "Upgrading Morrow Framework from [v3.4.0] to [5.0.0]") {
-                override fun run(indicator: ProgressIndicator) {
-                    for (module in project.modules) {
-                        module.rootManager.sourceRoots.forEach {
-                            processSourceFiles(project, it, processors, indicator)
+        ApplicationManager.getApplication().invokeLater {
+            ProgressManager.getInstance()
+                .run(object :
+                    Task.Backgroundable(anActionEvent.project, "Upgrading Morrow Framework from [v3.4.0] to [5.0.0]") {
+                    override fun run(indicator: ProgressIndicator) {
+                        for (module in project.modules) {
+                            module.rootManager.sourceRoots.forEach {
+                                processSourceFiles(project, it, processors, indicator)
+                            }
                         }
                     }
-                }
-            })
-
+                })
+        }
 
     }
 
