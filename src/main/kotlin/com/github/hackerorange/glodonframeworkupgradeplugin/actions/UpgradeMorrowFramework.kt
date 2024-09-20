@@ -40,7 +40,7 @@ class UpgradeMorrowFramework : AnAction() {
             for (mutableEntry in importReplace) {
 
                 val newBaseMapperClass = JavaPsiFacade.getInstance(project).findClass(
-                    mutableEntry.key,
+                    mutableEntry.value,
                     GlobalSearchScope.allScope(project)
                 )
 
