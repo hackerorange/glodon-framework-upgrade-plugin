@@ -1,9 +1,6 @@
 package com.github.hackerorange.glodonframeworkupgradeplugin.actions
 
-import com.github.hackerorange.glodonframeworkupgradeplugin.domain.ClassImportPsiFileProcessor
-import com.github.hackerorange.glodonframeworkupgradeplugin.domain.PsiFileProcessor
-import com.github.hackerorange.glodonframeworkupgradeplugin.domain.QueryWrapperOrderByProcessor
-import com.github.hackerorange.glodonframeworkupgradeplugin.domain.ReplaceEntityWrapperToQueryWrapperProcessor
+import com.github.hackerorange.glodonframeworkupgradeplugin.domain.*
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.command.WriteCommandAction
@@ -17,8 +14,6 @@ import com.intellij.psi.PsiJavaFile
 import com.intellij.psi.codeStyle.JavaCodeStyleManager
 import com.intellij.psi.util.PsiUtilBase
 
-private const val NEW_BASE_MAPPER_QNAME = "com.baomidou.mybatisplus.core.mapper.BaseMapper"
-private const val NEW_PAGE_QNAME = "com.baomidou.mybatisplus.extension.plugins.pagination.Page"
 
 class UpgradeMorrowFramework : AnAction() {
 
@@ -31,6 +26,7 @@ class UpgradeMorrowFramework : AnAction() {
 
         processors.add(ClassImportPsiFileProcessor())
         processors.add(ReplaceEntityWrapperToQueryWrapperProcessor())
+        processors.add(ServiceImplProcessor())
         processors.add(QueryWrapperOrderByProcessor())
 
         processors.forEach { it.init(project) }
