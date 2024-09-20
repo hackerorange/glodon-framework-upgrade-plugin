@@ -15,8 +15,6 @@ class ReplaceEntityWrapperToQueryWrapperProcessor : PsiFileProcessor {
             "com.baomidou.mybatisplus.core.mapper.BaseMapper"
         importReplace["com.baomidou.mybatisplus.plugins.Page"] =
             "com.baomidou.mybatisplus.extension.plugins.pagination.Page"
-        importReplace["com.baomidou.mybatisplus.service.impl.ServiceImpl"] =
-            "com.baomidou.mybatisplus.extension.service.impl.ServiceImpl"
     }
 
     override fun processPsiFile(project: Project, psiFile: PsiFile) {
