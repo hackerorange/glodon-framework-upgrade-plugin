@@ -85,6 +85,5 @@ class UpgradeMorrowFramework : AnAction() {
         WriteCommandAction.runWriteCommandAction(project) {
             JavaCodeStyleManager.getInstance(project).shortenClassReferences(psiJavaFile)
         }
-        DocumentUtil.writeInRunUndoTransparentAction { OptimizeImportsProcessor(project, psiJavaFile).run() }
     }
 }

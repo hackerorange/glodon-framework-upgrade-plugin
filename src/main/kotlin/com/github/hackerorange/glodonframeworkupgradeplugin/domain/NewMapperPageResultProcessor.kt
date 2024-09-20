@@ -4,6 +4,7 @@ import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.project.Project
 import com.intellij.psi.*
 import com.intellij.psi.search.GlobalSearchScope
+import com.intellij.psi.util.PsiTreeUtil
 
 class NewMapperPageResultProcessor : PsiFileProcessor {
 
@@ -20,9 +21,25 @@ class NewMapperPageResultProcessor : PsiFileProcessor {
             override fun visitAssignmentExpression(expression: PsiAssignmentExpression) {
                 val lExpression = expression.lExpression
                 val rExpression = expression.rExpression ?: return
-                extracted(lExpression.type ?: return, rExpression.type ?: return, project, rExpression)
+                getRecordsOfPageIfMatched(lExpression.type ?: return, rExpression.type ?: return, project, rExpression)
                 super.visitAssignmentExpression(expression)
             }
+
+            override fun visitReturnStatement(psiReturnStatement: PsiReturnStatement) {
+
+                val psiMethod = PsiTreeUtil.getParentOfType(psiReturnStatement, PsiMethod::class.java) ?: return
+
+                val lType = psiMethod.returnType ?: return
+
+                val returnValue = psiReturnStatement.returnValue ?: return
+
+                getRecordsOfPageIfMatched(lType, returnValue.type ?: return, project, returnValue)
+
+
+
+                super.visitReturnStatement(psiReturnStatement)
+            }
+
 
             override fun visitDeclarationStatement(statestatementment: PsiDeclarationStatement) {
 
@@ -36,7 +53,7 @@ class NewMapperPageResultProcessor : PsiFileProcessor {
                         if (initialType == variableType) {
                             continue
                         }
-                        extracted(variableType, initialType, project, declaredElement.initializer!!)
+                        getRecordsOfPageIfMatched(variableType, initialType, project, declaredElement.initializer!!)
                     }
                 }
                 super.visitDeclarationStatement(statestatementment)
@@ -45,7 +62,7 @@ class NewMapperPageResultProcessor : PsiFileProcessor {
 
     }
 
-    private fun extracted(
+    private fun getRecordsOfPageIfMatched(
         leftType: PsiType,
         rightType: PsiType,
         project: Project,
