@@ -48,20 +48,13 @@ class UpgradeMorrowFramework : AnAction() {
                         }
                     }
 
-                    ApplicationManager.getApplication().invokeLater {
-                        psiJavaFileList.indices.forEach {
-                            val psiJavaFile = psiJavaFileList[it]
-                            indicator.isIndeterminate = false
-                            indicator.fraction = it / psiJavaFileList.size.toDouble()
-                            indicator.text2 =
-                                "Upgrading Java File ${psiJavaFile.containingFile.virtualFile.canonicalPath}"
-                            for (processor in processors) {
-                                processor.processPsiFile(project, psiJavaFile)
-                            }
-                            WriteCommandAction.runWriteCommandAction(project) {
-                                JavaCodeStyleManager.getInstance(project).shortenClassReferences(psiJavaFile)
-                            }
-                        }
+                    psiJavaFileList.indices.forEach {
+                        val psiJavaFile = psiJavaFileList[it]
+                        indicator.isIndeterminate = false
+                        indicator.fraction = it / psiJavaFileList.size.toDouble()
+                        indicator.text2 =
+                            "Upgrading Java File ${psiJavaFile.containingFile.virtualFile.canonicalPath}"
+                        processJavaFile(project, processors, psiJavaFile)
                     }
                 }
             })
@@ -106,4 +99,17 @@ class UpgradeMorrowFramework : AnAction() {
         return javaFiles
     }
 
+    private fun processJavaFile(
+        project: Project,
+        processors: ArrayList<PsiFileProcessor>,
+        psiJavaFile: PsiJavaFile
+    ) {
+        for (processor in processors) {
+            processor.processPsiFile(project, psiJavaFile)
+        }
+
+        WriteCommandAction.runWriteCommandAction(project) {
+            JavaCodeStyleManager.getInstance(project).shortenClassReferences(psiJavaFile)
+        }
+    }
 }
