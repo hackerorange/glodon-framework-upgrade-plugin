@@ -30,48 +30,45 @@ class ReplaceEntityWrapperToQueryWrapperProcessor : PsiFileProcessor {
                     return
                 }
 
-                var expressionRealType: PsiType?
+                val targetExpressionRealType: PsiType?
 
                 if (psiNewExpression.parent is PsiLocalVariable) {
                     val realType = (psiNewExpression.parent as PsiLocalVariable).type
-                    expressionRealType = realType
+                    targetExpressionRealType = realType
                 } else {
-                    expressionRealType = psiNewExpression.type
+                    targetExpressionRealType = psiNewExpression.type
                 }
 
+                if (targetExpressionRealType !is PsiClassType) return
 
-                if (expressionRealType !is PsiClassType) return
+                val rightType = psiNewExpression.type
+                if (rightType !is PsiClassType) return
 
-                val aaaaaa = psiNewExpression.type
-                if (aaaaaa !is PsiClassType) return
+                val resolve = rightType.resolve() ?: return
+                val isOldEntityWrapper =
+                    resolve == oldEntityWrapperClass || resolve.isInheritor(oldEntityWrapperClass!!, true)
+                if (!isOldEntityWrapper) {
+                    return
+                }
+                val substitutor = targetExpressionRealType.resolveGenerics().substitutor
+                if (substitutor.substitutionMap.values.size != 1) return
+                val entityClassType = ArrayList(substitutor.substitutionMap.values)[0]
 
-                val resolve = aaaaaa.resolve() ?: return
-                if (resolve == oldEntityWrapperClass || resolve.isInheritor(oldEntityWrapperClass!!, true)) {
+                if (entityClassType !is PsiClassType) return
+                val entityClass = entityClassType.resolve() ?: return
 
-                    val newExpressionType = psiNewExpression.type ?: return
-
-                    if (newExpressionType !is PsiClassType) return
-                    val substitutor = newExpressionType.resolveGenerics().substitutor
-                    if (substitutor.substitutionMap.values.size != 1) return
-                    val entityClassType = ArrayList(substitutor.substitutionMap.values)[0]
-
-                    if (entityClassType !is PsiClassType) return
-                    val entityClass = entityClassType.resolve() ?: return
-
-                    var replaceExpression =
-                        "new ${newEntityWrapperClass!!.qualifiedName}<${entityClass.qualifiedName}>()\n"
+                val replaceExpression =
+                    "new ${newEntityWrapperClass!!.qualifiedName}<${entityClass.qualifiedName}>()\n"
 
 
-                    val createExpressionFromText =
-                        JavaPsiFacade.getInstance(project).elementFactory.createExpressionFromText(
-                            replaceExpression,
-                            psiNewExpression
-                        )
+                val createExpressionFromText =
+                    JavaPsiFacade.getInstance(project).elementFactory.createExpressionFromText(
+                        replaceExpression,
+                        psiNewExpression
+                    )
 
-                    WriteCommandAction.runWriteCommandAction(project) {
-                        psiNewExpression.replace(createExpressionFromText)
-                    }
-
+                WriteCommandAction.runWriteCommandAction(project) {
+                    psiNewExpression.replace(createExpressionFromText)
                 }
 
                 super.visitNewExpression(psiNewExpression)
