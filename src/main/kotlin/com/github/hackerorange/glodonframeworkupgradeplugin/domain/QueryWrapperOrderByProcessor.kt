@@ -86,12 +86,19 @@ class QueryWrapperOrderByProcessor : PsiFileProcessor {
         val argumentList = psiMethodCallExpression.argumentList
 
         if (argumentList.expressionCount == 1) {
-            var aaa = ""
+            var temp = ""
             for (expression in argumentList.expressions) {
-                aaa = (aaa + expression.type?.canonicalText + ";")
+                val type = expression.type
+                if (type == null) {
+                    temp = ("$temp;")
+                } else {
+                    temp = (temp + type.canonicalText + ";")
+                }
+
+                temp = (temp + type?.canonicalText + ";")
             }
 
-            if ("java.lang.String;" == aaa) {
+            if ("java.lang.String;" == temp) {
 
                 val psiExpressions = ArrayList<PsiElement>()
 
@@ -112,12 +119,20 @@ class QueryWrapperOrderByProcessor : PsiFileProcessor {
         }
 
         if (argumentList.expressionCount == 2) {
-            var aaa = ""
+            var temp = ""
             for (expression in argumentList.expressions) {
-                aaa = (aaa + expression.type?.canonicalText + ";")
+                val type = expression.type
+                if (type == null) {
+                    temp = ("$temp;")
+                } else {
+                    temp = (temp + type.canonicalText + ";")
+                }
+
+                temp = (temp + type?.canonicalText + ";")
             }
 
-            if ("java.lang.String;boolean;" == aaa) {
+
+            if ("java.lang.String;boolean;" == temp) {
 
                 val psiExpressions = ArrayList<PsiElement>()
 
@@ -134,13 +149,6 @@ class QueryWrapperOrderByProcessor : PsiFileProcessor {
                     argumentList.add(psiExpressions[1])
                     argumentList.add(psiExpressions[0])
                 }
-            }
-        }
-
-        if (argumentList.expressionCount == 3) {
-            var aaa = ""
-            for (expression in argumentList.expressions) {
-                aaa = (aaa + expression.type?.canonicalText + ";")
             }
         }
     }
