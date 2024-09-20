@@ -37,7 +37,6 @@ class QueryWrapperOrderByProcessor : PsiFileProcessor {
 
     private fun processOrderAsc(project: Project, psiMethodCallExpression: PsiMethodCallExpression) {
         val methodExpression = psiMethodCallExpression.methodExpression
-        println(methodExpression.referenceName)
 
         val filter = methodExpression.children.filterIsInstance<PsiIdentifier>()
 
@@ -54,7 +53,6 @@ class QueryWrapperOrderByProcessor : PsiFileProcessor {
 
     private fun processSetSelect(project: Project, psiMethodCallExpression: PsiMethodCallExpression) {
         val methodExpression = psiMethodCallExpression.methodExpression
-        println(methodExpression.referenceName)
 
         val filter = methodExpression.children.filterIsInstance<PsiIdentifier>()
 
@@ -92,7 +90,6 @@ class QueryWrapperOrderByProcessor : PsiFileProcessor {
             for (expression in argumentList.expressions) {
                 aaa = (aaa + expression.type?.canonicalText + ";")
             }
-            println(aaa)
 
             if ("java.lang.String;" == aaa) {
 
@@ -119,7 +116,6 @@ class QueryWrapperOrderByProcessor : PsiFileProcessor {
             for (expression in argumentList.expressions) {
                 aaa = (aaa + expression.type?.canonicalText + ";")
             }
-            println(aaa)
 
             if ("java.lang.String;boolean;" == aaa) {
 
@@ -146,7 +142,6 @@ class QueryWrapperOrderByProcessor : PsiFileProcessor {
             for (expression in argumentList.expressions) {
                 aaa = (aaa + expression.type?.canonicalText + ";")
             }
-            println(aaa)
         }
     }
 
