@@ -41,9 +41,7 @@ class UpgradeMorrowFramework : AnAction() {
                 override fun run(indicator: ProgressIndicator) {
                     for (module in project.modules) {
                         module.rootManager.sourceRoots.forEach {
-                            ApplicationManager.getApplication().runReadAction {
-                                processSourceFiles(project, it, processors, indicator)
-                            }
+                            processSourceFiles(project, it, processors, indicator)
                         }
                     }
                 }
@@ -79,8 +77,9 @@ class UpgradeMorrowFramework : AnAction() {
                 return@iterateChildrenRecursively true
             }
             indicator.text2 = "Upgrading Java File ${currentFile.canonicalPath}"
-            processJavaFile(project, processors, psiFile)
-
+            ApplicationManager.getApplication().runReadAction {
+                processJavaFile(project, processors, psiFile)
+            }
             true
         }
 
