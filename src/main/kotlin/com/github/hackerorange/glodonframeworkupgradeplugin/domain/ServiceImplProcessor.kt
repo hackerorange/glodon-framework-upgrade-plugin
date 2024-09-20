@@ -126,6 +126,27 @@ class ServiceImplProcessor : PsiFileProcessor {
 
             }
         }
+        if (expression.methodExpression.referenceName == "selectObj") {
+
+            val reference = expression.methodExpression.reference
+
+            WriteCommandAction.runWriteCommandAction(project) {
+                val createReferenceFromText =
+                    JavaPsiFacade.getInstance(project).elementFactory.createExpressionFromText(
+                        "this.baseMapper.selectObjs",
+                        null
+                    )
+                reference?.element?.replace(createReferenceFromText)
+
+                val newStatement =
+                    JavaPsiFacade.getInstance(project).elementFactory.createExpressionFromText(
+                        "${expression.text}.stream().filter(java.util.Objects::nonNull).findFirst().orElse(null)",
+                        null
+                    )
+                expression.replace(newStatement)
+
+            }
+        }
 
     }
 
