@@ -31,9 +31,13 @@ class ServiceImplProcessor : PsiFileProcessor {
                                 if (oldServiceImplClass == resolveMethod.containingClass) {
                                     println(resolveMethod)
                                     if (expression.methodExpression.referenceName == "insert") {
-
-                                        processServiceInsertMethodCall(project, expression)
-
+                                        renameMethod(project, expression, "save")
+                                    }
+                                    if (expression.methodExpression.referenceName == "delete") {
+                                        renameMethod(project, expression, "remove")
+                                    }
+                                    if (expression.methodExpression.referenceName == "deleteById") {
+                                        renameMethod(project, expression, "removeById")
                                     }
 
                                 }
@@ -71,14 +75,15 @@ class ServiceImplProcessor : PsiFileProcessor {
 
     }
 
-    private fun processServiceInsertMethodCall(project: Project, expression: PsiMethodCallExpression) {
+    private fun renameMethod(project: Project, expression: PsiMethodCallExpression, methodNewName: String) {
         val filter = expression.methodExpression.children.filterIsInstance<PsiIdentifier>()
         if (filter.size == 1) {
 
             val psiIdentifier = filter[0]
 
             WriteCommandAction.runWriteCommandAction(project) {
-                val methodNewIdentity = JavaPsiFacade.getInstance(project).elementFactory.createIdentifier("save")
+                val methodNewIdentity =
+                    JavaPsiFacade.getInstance(project).elementFactory.createIdentifier(methodNewName)
                 psiIdentifier.replace(methodNewIdentity);
             }
         }
