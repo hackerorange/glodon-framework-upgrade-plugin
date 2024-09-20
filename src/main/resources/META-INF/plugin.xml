@@ -9,15 +9,7 @@
 
     <resource-bundle>messages.MyBundle</resource-bundle>
 
-    <extensions defaultExtensionNs="com.intellij">
-        <toolWindow factoryClass="com.github.hackerorange.glodonframeworkupgradeplugin.toolWindow.MyToolWindowFactory"
-                    id="MyToolWindow"/>
-    </extensions>
-
-    <applicationListeners>
-        <listener class="com.github.hackerorange.glodonframeworkupgradeplugin.listeners.MyApplicationActivationListener"
-                  topic="com.intellij.openapi.application.ApplicationActivationListener"/>
-    </applicationListeners>
+   
     <actions>
         <action id="com.github.hackerorange.glodonframeworkupgradeplugin.actions.UpgradeMorrowFramework"
                 class="com.github.hackerorange.glodonframeworkupgradeplugin.actions.UpgradeMorrowFramework"
