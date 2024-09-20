@@ -90,7 +90,7 @@ class ServiceImplProcessor : PsiFileProcessor {
             GlobalSearchScope.allScope(project)
         )
         newServiceImplClass = JavaPsiFacade.getInstance(project).findClass(
-            "com.baomidou.mybatisplus.service.impl.ServiceImpl",
+            "com.baomidou.mybatisplus.extension.service.impl.ServiceImpl",
             GlobalSearchScope.allScope(project)
         )
     }
