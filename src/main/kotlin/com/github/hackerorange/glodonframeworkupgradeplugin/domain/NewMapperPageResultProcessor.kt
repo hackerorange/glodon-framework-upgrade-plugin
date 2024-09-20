@@ -22,6 +22,7 @@ class NewMapperPageResultProcessor : PsiFileProcessor {
                 val lExpression = expression.lExpression
                 val rExpression = expression.rExpression ?: return
                 getRecordsOfPageIfMatched(lExpression.type ?: return, rExpression.type ?: return, project, rExpression)
+                convertLongToIntIfMatched(lExpression.type ?: return, rExpression.type ?: return, project, rExpression)
                 super.visitAssignmentExpression(expression)
             }
 
@@ -34,8 +35,7 @@ class NewMapperPageResultProcessor : PsiFileProcessor {
                 val returnValue = psiReturnStatement.returnValue ?: return
 
                 getRecordsOfPageIfMatched(lType, returnValue.type ?: return, project, returnValue)
-
-
+                convertLongToIntIfMatched(lType, returnValue.type ?: return, project, returnValue)
 
                 super.visitReturnStatement(psiReturnStatement)
             }
@@ -54,6 +54,7 @@ class NewMapperPageResultProcessor : PsiFileProcessor {
                             continue
                         }
                         getRecordsOfPageIfMatched(variableType, initialType, project, declaredElement.initializer!!)
+                        convertLongToIntIfMatched(variableType, initialType, project, declaredElement.initializer!!)
                     }
                 }
                 super.visitDeclarationStatement(statestatementment)
@@ -92,6 +93,66 @@ class NewMapperPageResultProcessor : PsiFileProcessor {
                 }
             }
         }
+    }
+
+
+    private fun convertLongToIntIfMatched(
+        leftType: PsiType,
+        rightType: PsiType,
+        project: Project,
+        rightExpression: PsiExpression
+    ) {
+
+        // Integer a =(int) long b
+        if (rightType is PsiPrimitiveType && rightType.name == "long") {
+            val isResultTypeInteger =
+                (leftType is PsiPrimitiveType && leftType.name == "int") || (leftType is PsiClassType && leftType.canonicalText == "java.lang.Integer")
+            if (isResultTypeInteger) {
+
+                WriteCommandAction.runWriteCommandAction(project) {
+                    val methodNewIdentity =
+                        JavaPsiFacade.getInstance(project).elementFactory.createExpressionFromText(
+                            "(int) ${rightExpression.text}", null
+                        )
+                    rightExpression.replace(methodNewIdentity);
+                }
+            }
+            return
+        }
+
+        if (rightType is PsiClassType && rightType.canonicalText == "java.lang.Long") {
+
+            // int a == Optional.ofNullable(Long b).map(Long::intValue).orElse(0)
+            if (leftType is PsiPrimitiveType && leftType.name == "int") {
+
+                WriteCommandAction.runWriteCommandAction(project) {
+
+                    val newStatement =
+                        JavaPsiFacade.getInstance(project).elementFactory.createExpressionFromText(
+                            "java.util.Optional.ofNullable(${rightExpression.text}).map(Long::intValue).orElse(0)",
+                            null
+                        )
+                    rightExpression.replace(newStatement);
+                }
+                return
+            }
+
+            // Integer a == Optional.ofNullable(Long b).map(Long::intValue).orElse(0)
+            if (leftType is PsiClassType && leftType.canonicalText == "java.lang.Integer") {
+
+                WriteCommandAction.runWriteCommandAction(project) {
+                    val newStatement =
+                        JavaPsiFacade.getInstance(project).elementFactory.createExpressionFromText(
+                            "java.util.Optional.ofNullable(${rightExpression.text}).map(Long::intValue).orElse(0)",
+                            null
+                        )
+                    rightExpression.replace(newStatement);
+                }
+                return
+            }
+        }
+
+
     }
 
 
