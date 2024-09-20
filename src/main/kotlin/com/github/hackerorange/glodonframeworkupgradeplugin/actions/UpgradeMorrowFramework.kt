@@ -40,11 +40,16 @@ class UpgradeMorrowFramework : AnAction() {
                 .run(object :
                     Task.Backgroundable(anActionEvent.project, "Upgrading Morrow Framework from [v3.4.0] to [5.0.0]") {
                     override fun run(indicator: ProgressIndicator) {
-                        for (module in project.modules) {
-                            module.rootManager.sourceRoots.forEach {
-                                processSourceFiles(project, it, processors, indicator)
+                        val modules = project.modules
+                        if (modules.isNotEmpty()) {
+                            for ((index, module) in modules.withIndex()) {
+                                indicator.fraction = index / (modules.size.toDouble())
+                                module.rootManager.sourceRoots.forEach {
+                                    processSourceFiles(project, it, processors, indicator)
+                                }
                             }
                         }
+
                     }
                 })
         }
