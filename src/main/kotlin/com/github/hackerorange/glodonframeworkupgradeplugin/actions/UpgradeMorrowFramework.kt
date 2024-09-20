@@ -3,6 +3,7 @@ package com.github.hackerorange.glodonframeworkupgradeplugin.actions
 import com.github.hackerorange.glodonframeworkupgradeplugin.domain.*
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.progress.ProgressIndicator
 import com.intellij.openapi.progress.ProgressManager
@@ -76,7 +77,9 @@ class UpgradeMorrowFramework : AnAction() {
                 return@iterateChildrenRecursively true
             }
             indicator.text2 = "Upgrading Java File ${currentFile.canonicalPath}"
-            processJavaFile(project, processors, psiFile)
+            ApplicationManager.getApplication().runReadAction {
+                processJavaFile(project, processors, psiFile)
+            }
             true
         }
 
