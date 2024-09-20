@@ -8,28 +8,8 @@ import com.intellij.psi.search.GlobalSearchScope
 class QueryWrapperOrderByProcessor : PsiFileProcessor {
 
     private var entityWrapperClass: PsiClass? = null
-    private val importReplace = HashMap<String, String>()
-
-    init {
-        importReplace["com.baomidou.mybatisplus.mapper.BaseMapper"] =
-            "com.baomidou.mybatisplus.core.mapper.BaseMapper"
-        importReplace["com.baomidou.mybatisplus.plugins.Page"] =
-            "com.baomidou.mybatisplus.extension.plugins.pagination.Page"
-    }
 
     override fun processPsiFile(project: Project, psiFile: PsiFile) {
-        val classQNameToReplaceClassMap: HashMap<String, PsiClass> = HashMap()
-        for (mutableEntry in importReplace) {
-            val newBaseMapperClass = JavaPsiFacade.getInstance(project).findClass(
-                mutableEntry.value,
-                GlobalSearchScope.allScope(project)
-            )
-
-            if (newBaseMapperClass != null) {
-                classQNameToReplaceClassMap[mutableEntry.key] = newBaseMapperClass
-            }
-        }
-
 
         psiFile.accept(object : JavaRecursiveElementVisitor() {
 
@@ -172,7 +152,7 @@ class QueryWrapperOrderByProcessor : PsiFileProcessor {
 
     override fun init(project: Project) {
         entityWrapperClass = JavaPsiFacade.getInstance(project).findClass(
-            "com.baomidou.mybatisplus.mapper.EntityWrapper",
+            "com.baomidou.mybatisplus.core.conditions.query.QueryWrapper",
             GlobalSearchScope.allScope(project)
         )
     }
