@@ -42,7 +42,10 @@ class ReplaceEntityWrapperToQueryWrapperProcessor : PsiFileProcessor {
 
                 if (expressionRealType !is PsiClassType) return
 
-                val resolve = expressionRealType.resolve() ?: return
+                val aaaaaa = psiNewExpression.type
+                if (aaaaaa !is PsiClassType) return
+
+                val resolve = aaaaaa.resolve() ?: return
                 if (resolve == oldEntityWrapperClass || resolve.isInheritor(oldEntityWrapperClass!!, true)) {
 
                     val newExpressionType = psiNewExpression.type ?: return
@@ -71,7 +74,6 @@ class ReplaceEntityWrapperToQueryWrapperProcessor : PsiFileProcessor {
 
                 }
 
-                psiNewExpression.classReference
                 super.visitNewExpression(psiNewExpression)
             }
         })
