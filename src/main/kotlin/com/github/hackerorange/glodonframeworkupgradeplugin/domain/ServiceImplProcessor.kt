@@ -39,19 +39,8 @@ class ServiceImplProcessor : PsiFileProcessor {
                                     if (expression.methodExpression.referenceName == "deleteById") {
                                         renameMethod(project, expression, "removeById")
                                     }
-                                    if (expression.methodExpression.referenceName == "selectList") {
+                                    useBaseMapperInsteadMethod(expression, project)
 
-                                        val reference = expression.methodExpression.reference
-
-                                        WriteCommandAction.runWriteCommandAction(project) {
-                                            val createReferenceFromText =
-                                                JavaPsiFacade.getInstance(project).elementFactory.createReferenceFromText(
-                                                    "baseMapper",
-                                                    null
-                                                )
-                                            reference?.element?.replace(createReferenceFromText)
-                                        }
-                                    }
 
                                 }
                             }
@@ -86,6 +75,35 @@ class ServiceImplProcessor : PsiFileProcessor {
         }
 
 
+    }
+
+    private fun useBaseMapperInsteadMethod(
+        expression: PsiMethodCallExpression,
+        project: Project
+    ) {
+        val methodNames = ArrayList<String>()
+        methodNames.add("selectList")
+        methodNames.add("selectCount")
+        methodNames.add("selectById")
+        methodNames.add("selectBatchIds")
+
+        for (methodName in methodNames) {
+
+
+            if (expression.methodExpression.referenceName == methodName) {
+
+                val reference = expression.methodExpression.reference
+
+                WriteCommandAction.runWriteCommandAction(project) {
+                    val createReferenceFromText =
+                        JavaPsiFacade.getInstance(project).elementFactory.createExpressionFromText(
+                            "this.baseMapper.${methodName}",
+                            null
+                        )
+                    reference?.element?.replace(createReferenceFromText)
+                }
+            }
+        }
     }
 
     private fun renameMethod(project: Project, expression: PsiMethodCallExpression, methodNewName: String) {
