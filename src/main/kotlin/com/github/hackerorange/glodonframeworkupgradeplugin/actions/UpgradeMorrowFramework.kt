@@ -11,7 +11,6 @@ import com.intellij.openapi.project.rootManager
 import com.intellij.openapi.vfs.VfsUtilCore
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.vfs.VirtualFileFilter
-import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.PsiJavaFile
 import com.intellij.psi.codeStyle.JavaCodeStyleManager
 import com.intellij.psi.util.PsiUtilBase
@@ -31,6 +30,7 @@ class UpgradeMorrowFramework : AnAction() {
         processors.add(ReplaceEntityWrapperToQueryWrapperProcessor())
         processors.add(ServiceImplProcessor())
         processors.add(QueryWrapperOrderByProcessor())
+        processors.add(NewMapperPageResultProcessor())
 
         processors.forEach { it.init(project) }
 

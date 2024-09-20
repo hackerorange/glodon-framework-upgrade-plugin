@@ -83,7 +83,6 @@ class ServiceImplProcessor : PsiFileProcessor {
     ) {
         val methodNames = ArrayList<String>()
         methodNames.add("selectList")
-
         methodNames.add("selectById")
         methodNames.add("selectBatchIds")
 
