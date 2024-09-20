@@ -83,7 +83,7 @@ class ServiceImplProcessor : PsiFileProcessor {
     ) {
         val methodNames = ArrayList<String>()
         methodNames.add("selectList")
-        methodNames.add("selectCount")
+
         methodNames.add("selectById")
         methodNames.add("selectBatchIds")
 
@@ -104,6 +104,29 @@ class ServiceImplProcessor : PsiFileProcessor {
                 }
             }
         }
+
+        if (expression.methodExpression.referenceName == "selectCount") {
+
+            val reference = expression.methodExpression.reference
+
+            WriteCommandAction.runWriteCommandAction(project) {
+                val createReferenceFromText =
+                    JavaPsiFacade.getInstance(project).elementFactory.createExpressionFromText(
+                        "this.baseMapper.selectCount",
+                        null
+                    )
+                reference?.element?.replace(createReferenceFromText)
+
+                val newStatement =
+                    JavaPsiFacade.getInstance(project).elementFactory.createExpressionFromText(
+                        "java.util.Optional.ofNullable(${expression.text}).map(Long::intValue).orElse(0)",
+                        null
+                    )
+                expression.replace(newStatement)
+
+            }
+        }
+
     }
 
     private fun renameMethod(project: Project, expression: PsiMethodCallExpression, methodNewName: String) {

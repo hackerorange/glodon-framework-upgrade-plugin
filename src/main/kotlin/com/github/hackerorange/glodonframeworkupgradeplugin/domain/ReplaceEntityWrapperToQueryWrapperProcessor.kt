@@ -28,7 +28,7 @@ class ReplaceEntityWrapperToQueryWrapperProcessor : PsiFileProcessor {
                 if (psiNewExpression.type !is PsiClassType) return
 
                 val resolve = (psiNewExpression.type as PsiClassType).resolve() ?: return
-                if (resolve == oldEntityWrapperClass) {
+                if (resolve == oldEntityWrapperClass || resolve.isInheritor(oldEntityWrapperClass!!, true)) {
 
                     val newExpressionType = psiNewExpression.type ?: return
 
@@ -85,20 +85,36 @@ class ReplaceEntityWrapperToQueryWrapperProcessor : PsiFileProcessor {
                                 )
                             ) {
                                 val substitutor = resolveGenerics.substitutor
-                                if (substitutor.substitutionMap.values.size != 1) return
-                                val entityClassType = ArrayList(substitutor.substitutionMap.values)[0]
+                                if (substitutor.substitutionMap.values.size != 1) {
 
-                                val newType =
-                                    JavaPsiFacade.getInstance(project).elementFactory.createTypeFromText(
-                                        newEntityWrapperClass!!.qualifiedName + "<${entityClassType.canonicalText}>",
+                                    val newType =
+                                        JavaPsiFacade.getInstance(project).elementFactory.createTypeFromText(
+                                            newEntityWrapperClass!!.qualifiedName + "<?>",
+                                            null
+                                        )
+
+                                    WriteCommandAction.runWriteCommandAction(project) {
+                                        psiTypeElement.replace(
+                                            JavaPsiFacade.getInstance(project).elementFactory.createTypeElement(
+                                                newType
+                                            )
+                                        )
+                                    }
+                                } else {
+                                    val entityClassType = ArrayList(substitutor.substitutionMap.values)[0]
+
+                                    val newType = JavaPsiFacade.getInstance(project).elementFactory.createTypeFromText(
+                                        newEntityWrapperClass!!.qualifiedName + "<${entityClassType?.canonicalText ?: "?"}>",
                                         null
                                     )
 
-                                val createTypeElement =
-                                    JavaPsiFacade.getInstance(project).elementFactory.createTypeElement(newType)
-
-                                WriteCommandAction.runWriteCommandAction(project) {
-                                    psiTypeElement.replace(createTypeElement)
+                                    WriteCommandAction.runWriteCommandAction(project) {
+                                        psiTypeElement.replace(
+                                            JavaPsiFacade.getInstance(project).elementFactory.createTypeElement(
+                                                newType
+                                            )
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -112,7 +128,7 @@ class ReplaceEntityWrapperToQueryWrapperProcessor : PsiFileProcessor {
 
     override fun init(project: Project) {
         oldEntityWrapperClass = JavaPsiFacade.getInstance(project).findClass(
-            "com.baomidou.mybatisplus.mapper.EntityWrapper",
+            "com.baomidou.mybatisplus.mapper.Wrapper",
             GlobalSearchScope.allScope(project)
         )
         newEntityWrapperClass = JavaPsiFacade.getInstance(project).findClass(
