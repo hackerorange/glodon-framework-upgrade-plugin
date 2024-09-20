@@ -39,9 +39,6 @@ class ServiceImplProcessor : PsiFileProcessor {
                                     if (expression.methodExpression.referenceName == "deleteById") {
                                         renameMethod(project, expression, "removeById")
                                     }
-                                    if (expression.methodExpression.referenceName == "selectList") {
-                                        println("查询列表的接口")
-                                    }
 
                                 }
                             }
