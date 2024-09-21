@@ -147,7 +147,9 @@ class ServiceImplProcessor : PsiFileProcessor {
                             if (resolveMethod == null) {
                                 return
                             }
-
+                            if (oldServiceImplClass != resolveMethod.containingClass) {
+                                return
+                            }
                             var oldMethodCallExpression = methodCallExpression.text
 
                             if (oldMethodCallExpression.startsWith("this.")) {
