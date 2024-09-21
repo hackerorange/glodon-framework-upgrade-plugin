@@ -3,6 +3,8 @@ package com.github.hackerorange.glodonframeworkupgradeplugin.actions
 import com.github.hackerorange.glodonframeworkupgradeplugin.domain.*
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
+import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.progress.PerformInBackgroundOption
 import com.intellij.openapi.progress.ProgressIndicator
 import com.intellij.openapi.progress.Task
@@ -13,6 +15,7 @@ import com.intellij.openapi.vfs.VfsUtilCore
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.vfs.VirtualFileFilter
 import com.intellij.psi.PsiJavaFile
+import com.intellij.psi.codeStyle.JavaCodeStyleManager
 import com.intellij.psi.util.PsiUtilBase
 
 
@@ -49,44 +52,35 @@ class MorrowFrameworkUpgradeBackgroundTask(project: Project, private val process
     override fun run(progressIndicator: ProgressIndicator) {
         val modules = project.modules
 
-//        ApplicationManager.getApplication().invokeLater {
         val psiFiles: ArrayList<PsiJavaFile> = ArrayList()
-
-//            ApplicationManager.getApplication().runReadAction {
-        for (module in modules) {
-            module.rootManager.sourceRoots.forEach {
-                collectAllJavaFile(project, it, psiFiles)
+        ApplicationManager.getApplication().invokeLater {
+            for (module in modules) {
+                module.rootManager.sourceRoots.forEach {
+                    collectAllJavaFile(project, it, psiFiles)
+                }
             }
-        }
-//            }
-
-        if (psiFiles.isEmpty()) {
-            return
-        }
-
-        var current = 0;
-        val total = psiFiles.size * processors.size
-
-        for (currentPsiJavaFile in psiFiles) {
-            for (processor in processors) {
-                current++
-                progressIndicator.isIndeterminate = false
-                progressIndicator.fraction = current / (total.toDouble())
-                progressIndicator.text2 = "Upgrading Java File ${currentPsiJavaFile.virtualFile.canonicalPath}"
-
-                processor.processPsiFile(project, currentPsiJavaFile)
+            if (psiFiles.isEmpty()) {
+                return@invokeLater
             }
 
+            var current = 0;
+            val total = psiFiles.size * processors.size
 
-//            ApplicationManager.getApplication().invokeLater {
-//                JavaCodeStyleManager.getInstance(project)
-//                    .shortenClassReferences(currentPsiJavaFile)
-//            }
+            for (currentPsiJavaFile in psiFiles) {
+                for (processor in processors) {
+                    current++
+                    progressIndicator.isIndeterminate = false
+                    progressIndicator.fraction = current / (total.toDouble())
+                    progressIndicator.text2 = "Upgrading Java File ${currentPsiJavaFile.virtualFile.canonicalPath}"
 
-//        }
+                    processor.processPsiFile(project, currentPsiJavaFile)
+                }
 
+                WriteCommandAction.runWriteCommandAction(project) {
+                    JavaCodeStyleManager.getInstance(project).shortenClassReferences(currentPsiJavaFile)
+                }
+            }
         }
-
     }
 
     private fun collectAllJavaFile(
