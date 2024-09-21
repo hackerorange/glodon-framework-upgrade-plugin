@@ -1,6 +1,7 @@
 package com.github.hackerorange.glodonframeworkupgradeplugin.domain.processor.mapper
 
 import com.github.hackerorange.glodonframeworkupgradeplugin.domain.processor.PsiFileProcessor
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.project.Project
 import com.intellij.psi.*
@@ -8,6 +9,10 @@ import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.util.PsiTreeUtil
 
 class BaseMapperSelectCountConvertProcessor : PsiFileProcessor {
+    class MethodCallStatementReplaceInfo(
+        val oldMethodCallExpression: PsiElement,
+        val newMethodCallExpression: PsiElement
+    )
 
     private var mybatisPlusPageClass: PsiClass? = null
     private var listClass: PsiClass? = null
@@ -17,58 +22,86 @@ class BaseMapperSelectCountConvertProcessor : PsiFileProcessor {
             return
         }
 
-        psiFile.accept(object : JavaRecursiveElementVisitor() {
+        val methodCallStatementReplaceInfos = ArrayList<MethodCallStatementReplaceInfo>()
 
-            override fun visitAssignmentExpression(expression: PsiAssignmentExpression) {
+        ApplicationManager.getApplication().runReadAction {
+            psiFile.accept(object : JavaRecursiveElementVisitor() {
 
-                val lExpression = expression.lExpression
-                val rExpression = expression.rExpression ?: return
-                convertLongToIntIfMatched(lExpression.type ?: return, rExpression.type ?: return, project, rExpression)
+                override fun visitAssignmentExpression(expression: PsiAssignmentExpression) {
 
-                // 先处理好语句后，再做判断
-                super.visitAssignmentExpression(expression)
-            }
+                    val lExpression = expression.lExpression
+                    val rExpression = expression.rExpression ?: return
+                    convertLongToIntIfMatched(
+                        lExpression.type ?: return,
+                        rExpression.type ?: return,
+                        project,
+                        rExpression,
+                        methodCallStatementReplaceInfos
+                    )
 
-            override fun visitReturnStatement(psiReturnStatement: PsiReturnStatement) {
+                    // 先处理好语句后，再做判断
+                    super.visitAssignmentExpression(expression)
+                }
 
-                super.visitReturnStatement(psiReturnStatement)
+                override fun visitReturnStatement(psiReturnStatement: PsiReturnStatement) {
 
-                val psiMethod = PsiTreeUtil.getParentOfType(psiReturnStatement, PsiMethod::class.java) ?: return
+                    super.visitReturnStatement(psiReturnStatement)
 
-                val lType = psiMethod.returnType ?: return
+                    val psiMethod = PsiTreeUtil.getParentOfType(psiReturnStatement, PsiMethod::class.java) ?: return
 
-                val returnValue = psiReturnStatement.returnValue ?: return
+                    val lType = psiMethod.returnType ?: return
 
-                convertLongToIntIfMatched(lType, returnValue.type ?: return, project, returnValue)
-            }
+                    val returnValue = psiReturnStatement.returnValue ?: return
 
-            override fun visitClass(aClass: PsiClass) {
-                super.visitClass(aClass)
-            }
+                    convertLongToIntIfMatched(
+                        lType,
+                        returnValue.type ?: return,
+                        project,
+                        returnValue,
+                        methodCallStatementReplaceInfos
+                    )
+                }
 
-            override fun visitLambdaExpression(lambdaExpression: PsiLambdaExpression) {
-                super.visitLambdaExpression(lambdaExpression)
-            }
+                override fun visitClass(aClass: PsiClass) {
+                    super.visitClass(aClass)
+                }
 
-            override fun visitDeclarationStatement(statestatementment: PsiDeclarationStatement) {
+                override fun visitLambdaExpression(lambdaExpression: PsiLambdaExpression) {
+                    super.visitLambdaExpression(lambdaExpression)
+                }
 
-                super.visitDeclarationStatement(statestatementment)
+                override fun visitDeclarationStatement(statestatementment: PsiDeclarationStatement) {
 
-                for (declaredElement in statestatementment.declaredElements) {
+                    super.visitDeclarationStatement(statestatementment)
 
-                    if (declaredElement is PsiLocalVariable) {
-                        val variableType = declaredElement.type
-                        val psiExpression = declaredElement.initializer ?: continue
+                    for (declaredElement in statestatementment.declaredElements) {
 
-                        val initialType = psiExpression.type ?: return
-                        if (initialType == variableType) {
-                            continue
+                        if (declaredElement is PsiLocalVariable) {
+                            val variableType = declaredElement.type
+                            val psiExpression = declaredElement.initializer ?: continue
+
+                            val initialType = psiExpression.type ?: return
+                            if (initialType == variableType) {
+                                continue
+                            }
+                            convertLongToIntIfMatched(
+                                variableType,
+                                initialType,
+                                project,
+                                declaredElement.initializer!!,
+                                methodCallStatementReplaceInfos
+                            )
                         }
-                        convertLongToIntIfMatched(variableType, initialType, project, declaredElement.initializer!!)
                     }
                 }
+            })
+        }
+
+        WriteCommandAction.runWriteCommandAction(project) {
+            methodCallStatementReplaceInfos.forEach {
+                it.oldMethodCallExpression.replace(it.newMethodCallExpression)
             }
-        })
+        }
 
     }
 
@@ -77,7 +110,8 @@ class BaseMapperSelectCountConvertProcessor : PsiFileProcessor {
         leftType: PsiType,
         rightType: PsiType,
         project: Project,
-        rightExpression: PsiExpression
+        rightExpression: PsiExpression,
+        methodCallStatementReplaceInfos: ArrayList<MethodCallStatementReplaceInfo>
     ) {
         if (leftType == rightType) {
             return
@@ -87,53 +121,52 @@ class BaseMapperSelectCountConvertProcessor : PsiFileProcessor {
         if (rightType is PsiPrimitiveType && rightType.name == "long") {
             val isResultTypeInteger =
                 (leftType is PsiPrimitiveType && leftType.name == "int") || (leftType is PsiClassType && leftType.canonicalText == "java.lang.Integer")
-            if (isResultTypeInteger) {
-
-                WriteCommandAction.runWriteCommandAction(project) {
-                    val methodNewIdentity =
-                        JavaPsiFacade.getInstance(project).elementFactory.createExpressionFromText(
-                            "(int) ${rightExpression.text}", null
-                        )
-                    rightExpression.replace(methodNewIdentity);
-                }
+            if (!isResultTypeInteger) {
+                return
             }
+            val methodNewIdentity =
+                JavaPsiFacade.getInstance(project).elementFactory.createExpressionFromText(
+                    "(int) ${rightExpression.text}", null
+                ) as PsiMethodCallExpression
+
+            methodCallStatementReplaceInfos.add(MethodCallStatementReplaceInfo(rightExpression, methodNewIdentity))
             return
         }
         if (rightExpression !is PsiMethodCallExpression) {
             return
         }
-//        val referenceName = rightExpression.methodExpression.referenceName
-//        if (referenceName != "selectCount") {
-//            return
-//        }
+
         if (rightType is PsiClassType && rightType.canonicalText == "java.lang.Long") {
 
             // int a == Optional.ofNullable(Long b).map(Long::intValue).orElse(0)
             if (leftType is PsiPrimitiveType && leftType.name == "int") {
-
-                WriteCommandAction.runWriteCommandAction(project) {
-
-                    val newStatement =
-                        JavaPsiFacade.getInstance(project).elementFactory.createExpressionFromText(
-                            "java.util.Optional.ofNullable(${rightExpression.text}).map(Long::intValue).orElse(0)",
-                            null
-                        )
-                    rightExpression.replace(newStatement);
-                }
+                val newMethodCallExpression =
+                    JavaPsiFacade.getInstance(project).elementFactory.createExpressionFromText(
+                        "java.util.Optional.ofNullable(${rightExpression.text}).map(Long::intValue).orElse(0)",
+                        null
+                    )
+                methodCallStatementReplaceInfos.add(
+                    MethodCallStatementReplaceInfo(
+                        rightExpression,
+                        newMethodCallExpression
+                    )
+                )
                 return
             }
 
             // Integer a == Optional.ofNullable(Long b).map(Long::intValue).orElse(0)
             if (leftType is PsiClassType && leftType.canonicalText == "java.lang.Integer") {
-
-                WriteCommandAction.runWriteCommandAction(project) {
-                    val newStatement =
-                        JavaPsiFacade.getInstance(project).elementFactory.createExpressionFromText(
-                            "java.util.Optional.ofNullable(${rightExpression.text}).map(Long::intValue).orElse(0)",
-                            null
-                        )
-                    rightExpression.replace(newStatement);
-                }
+                val newMethodCallExpression =
+                    JavaPsiFacade.getInstance(project).elementFactory.createExpressionFromText(
+                        "java.util.Optional.ofNullable(${rightExpression.text}).map(Long::intValue).orElse(0)",
+                        null
+                    )
+                methodCallStatementReplaceInfos.add(
+                    MethodCallStatementReplaceInfo(
+                        rightExpression,
+                        newMethodCallExpression
+                    )
+                )
                 return
             }
         }
