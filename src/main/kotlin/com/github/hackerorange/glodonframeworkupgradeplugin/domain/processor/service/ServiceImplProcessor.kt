@@ -87,7 +87,7 @@ class ServiceImplProcessor : PsiFileProcessor {
     ) {
         WriteCommandAction.runWriteCommandAction(project) {
             importStatementReplaceContexts.forEach {
-                it.oldMethodCallExpression.replace(it.oldMethodCallExpression)
+                it.oldMethodCallExpression.replace(it.newMethodCallExpression)
             }
         }
     }
@@ -178,18 +178,19 @@ class ServiceImplProcessor : PsiFileProcessor {
                     if (resolveMethod == null) {
                         return
                     }
-                    val reference = expression.methodExpression.reference
 
-                    val createReferenceFromText =
-                        JavaPsiFacade.getInstance(project).elementFactory.createExpressionFromText(
-                            "this.baseMapper.selectCount",
-                            null
-                        )
-                    reference?.element?.replace(createReferenceFromText)
+                    var oldMethodCallExpression = expression.text
+
+                    if (oldMethodCallExpression.startsWith("this.")) {
+                        oldMethodCallExpression = oldMethodCallExpression.substring(5)
+                    }
+                    if (oldMethodCallExpression.startsWith("super.")) {
+                        oldMethodCallExpression = oldMethodCallExpression.substring(5)
+                    }
 
                     val newStatement =
                         JavaPsiFacade.getInstance(project).elementFactory.createExpressionFromText(
-                            "java.util.Optional.ofNullable(${expression.text}).map(Long::intValue).orElse(0)",
+                            "java.util.Optional.ofNullable(this.baseMapper.${oldMethodCallExpression}).map(Long::intValue).orElse(0)",
                             null
                         )
                     result.add(MethodCallStatementReplaceInfo(expression, newStatement))
@@ -201,18 +202,20 @@ class ServiceImplProcessor : PsiFileProcessor {
                         return
                     }
 
-                    val reference = expression.methodExpression.reference
+                    var oldMethodCallExpression = expression.text
 
-                    val createReferenceFromText =
-                        JavaPsiFacade.getInstance(project).elementFactory.createExpressionFromText(
-                            "this.baseMapper.selectObjs",
-                            null
-                        )
-                    reference?.element?.replace(createReferenceFromText)
+                    if (oldMethodCallExpression.startsWith("this.")) {
+                        oldMethodCallExpression = oldMethodCallExpression.substring(5)
+                    }
+                    if (oldMethodCallExpression.startsWith("super.")) {
+                        oldMethodCallExpression = oldMethodCallExpression.substring(5)
+                    }
+
+                    oldMethodCallExpression = oldMethodCallExpression.replaceFirst("selectObj", "selectObjs")
 
                     val newStatement =
                         JavaPsiFacade.getInstance(project).elementFactory.createExpressionFromText(
-                            "${expression.text}.stream().filter(java.util.Objects::nonNull).findFirst().orElse(null)",
+                            "this.baseMapper.${oldMethodCallExpression}.stream().filter(java.util.Objects::nonNull).findFirst().orElse(null)",
                             null
                         )
                     result.add(MethodCallStatementReplaceInfo(expression, newStatement))
