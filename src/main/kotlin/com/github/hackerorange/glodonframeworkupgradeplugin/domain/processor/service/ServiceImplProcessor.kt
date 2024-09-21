@@ -11,7 +11,7 @@ class ServiceImplProcessor : PsiFileProcessor {
     private var oldServiceImplClass: PsiClass? = null
     private var newServiceImplClass: PsiClass? = null
 
-    private var methodCallIdentityRenameProcessors: ArrayList<MethodCallIdentityRenameProcessor> = ArrayList()
+    private var replaceWithMapperReturnTrueProcessors: ArrayList<ReplaceWithMapperReturnTrueProcessor> = ArrayList()
 
 
     override fun processPsiFile(project: Project, psiFile: PsiFile) {
@@ -25,7 +25,7 @@ class ServiceImplProcessor : PsiFileProcessor {
             for (psiClass in psiFile.classes) {
 
                 if (psiClass.isInheritor(oldServiceImplClass!!, true)) {
-                    methodCallIdentityRenameProcessors.forEach { methodCallIdentityRenameProcessor ->
+                    replaceWithMapperReturnTrueProcessors.forEach { methodCallIdentityRenameProcessor ->
                         methodCallIdentityRenameProcessor.processRename(project, psiClass)
                     }
                     extracted(psiClass, project)
@@ -160,25 +160,18 @@ class ServiceImplProcessor : PsiFileProcessor {
             "com.baomidou.mybatisplus.extension.service.impl.ServiceImpl",
             GlobalSearchScope.allScope(project)
         )
-        
+
         oldServiceImplClass?.let {
-            methodCallIdentityRenameProcessors.add(
-                MethodCallIdentityRenameProcessor("insert", "save", it)
-            )
-            methodCallIdentityRenameProcessors.add(
-                MethodCallIdentityRenameProcessor("delete", "remove", it)
-            )
-            methodCallIdentityRenameProcessors.add(
-                MethodCallIdentityRenameProcessor("deleteById", "deleteById", it)
-            )
+            replaceWithMapperReturnTrueProcessors.add(ReplaceWithMapperReturnTrueProcessor("insert", it))
+            replaceWithMapperReturnTrueProcessors.add(ReplaceWithMapperReturnTrueProcessor("delete", it))
+            replaceWithMapperReturnTrueProcessors.add(ReplaceWithMapperReturnTrueProcessor("deleteById", it))
         }
 
     }
 
 
-    class MethodCallIdentityRenameProcessor(
-        private val oldName: String,
-        private val newMethodName: String,
+    class ReplaceWithMapperReturnTrueProcessor(
+        private val methodName: String,
         private var oldServiceImplClass: PsiClass
     ) {
 
@@ -190,7 +183,7 @@ class ServiceImplProcessor : PsiFileProcessor {
             psiClass.accept(object : JavaRecursiveElementVisitor() {
                 override fun visitMethodCallExpression(expression: PsiMethodCallExpression) {
                     super.visitMethodCallExpression(expression)
-                    if (expression.methodExpression.referenceName != oldName) {
+                    if (expression.methodExpression.referenceName != methodName) {
                         return
                     }
                     val resolveMethod = expression.resolveMethod()
@@ -198,16 +191,18 @@ class ServiceImplProcessor : PsiFileProcessor {
                     if (resolveMethod != null) {
                         if (oldServiceImplClass == resolveMethod.containingClass) {
                             println(resolveMethod)
-                            val filter = expression.methodExpression.children.filterIsInstance<PsiIdentifier>()
-                            if (filter.size == 1) {
+                            var oldMethodCallExpression = expression.text
 
-                                val psiIdentifier = filter[0]
-
-                                WriteCommandAction.runWriteCommandAction(project) {
-                                    val methodNewIdentity =
-                                        JavaPsiFacade.getInstance(project).elementFactory.createIdentifier(newMethodName)
-                                    psiIdentifier.replace(methodNewIdentity);
-                                }
+                            if (oldMethodCallExpression.startsWith("this.")) {
+                                oldMethodCallExpression = oldMethodCallExpression.substring(5)
+                            }
+                            WriteCommandAction.runWriteCommandAction(project) {
+                                val createReferenceFromText =
+                                    JavaPsiFacade.getInstance(project).elementFactory.createExpressionFromText(
+                                        "com.baomidou.mybatisplus.extension.toolkit.SqlHelper.retBool(this.baseMapper.$oldMethodCallExpression)",
+                                        null
+                                    )
+                                expression.replace(createReferenceFromText)
                             }
                         }
                     }
