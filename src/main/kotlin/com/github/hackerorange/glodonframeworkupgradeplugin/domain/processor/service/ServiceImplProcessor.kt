@@ -87,7 +87,12 @@ class ServiceImplProcessor : PsiFileProcessor {
     ) {
         WriteCommandAction.runWriteCommandAction(project) {
             importStatementReplaceContexts.forEach {
-                it.oldMethodCallExpression.replace(it.newMethodCallExpression)
+                try{
+                    it.oldMethodCallExpression.replace(it.newMethodCallExpression)
+                }catch (e:Exception){
+                    e.printStackTrace()
+                }
+
             }
         }
     }
@@ -117,7 +122,6 @@ class ServiceImplProcessor : PsiFileProcessor {
                         )
                     }
 
-                    super.visitImportStatement(statement)
                 }
             })
         }
