@@ -46,12 +46,13 @@ class MorrowFrameworkUpgradeBackgroundTask(project: Project, private val process
     Task.Backgroundable(
         project,
         "Upgrading Morrow Framework from [v3.4.0] to [5.0.0]",
-        false,
+        true,
         PerformInBackgroundOption.ALWAYS_BACKGROUND
     ) {
 
     override fun run(progressIndicator: ProgressIndicator) {
         val modules = project.modules
+        progressIndicator.isIndeterminate = false
 
         val psiFiles: ArrayList<PsiJavaFile> = scanAllJavaPsiFileFromModules(modules)
         if (psiFiles.isNotEmpty()) {
@@ -72,7 +73,7 @@ class MorrowFrameworkUpgradeBackgroundTask(project: Project, private val process
                 progressIndicator.isIndeterminate = false
                 progressIndicator.fraction = current / (total.toDouble())
                 progressIndicator.text2 = "Upgrading Java File ${currentPsiJavaFile.virtualFile.canonicalPath}"
-
+                progressIndicator.checkCanceled()
                 processor.processPsiFile(project, currentPsiJavaFile)
             }
 
