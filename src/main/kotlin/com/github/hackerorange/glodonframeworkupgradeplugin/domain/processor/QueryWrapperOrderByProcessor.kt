@@ -5,6 +5,7 @@ import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.project.Project
 import com.intellij.psi.*
 import com.intellij.psi.search.GlobalSearchScope
+import java.util.LinkedList
 
 class QueryWrapperOrderByProcessor : PsiFileProcessor {
 
@@ -15,8 +16,22 @@ class QueryWrapperOrderByProcessor : PsiFileProcessor {
 
     override fun processPsiFile(project: Project, psiFile: PsiFile) {
 
-        val methodCallReplaceInfos = ArrayList<OrderByMethodCallReplaceInfo>()
 
+        while (true) {
+            if (tryToFixOrderBy(psiFile, project)) {
+                return
+            }
+        }
+
+
+    }
+
+    private fun tryToFixOrderBy(
+        psiFile: PsiFile,
+        project: Project
+    ): Boolean {
+
+        val methodCallReplaceInfos = LinkedList<OrderByMethodCallReplaceInfo>()
 
         ApplicationManager.getApplication().runReadAction {
 
@@ -24,74 +39,84 @@ class QueryWrapperOrderByProcessor : PsiFileProcessor {
 
                 override fun visitMethodCallExpression(psiMethodCallExpression: PsiMethodCallExpression) {
 
-                    super.visitMethodCallExpression(psiMethodCallExpression)
 
                     val methodExpression = psiMethodCallExpression.methodExpression
 
                     when (methodExpression.referenceName) {
                         "orderBy" -> {
-                            val orderByCopy = psiMethodCallExpression.copy() as PsiMethodCallExpression
-                            processOrderBy(project, orderByCopy)
-                            methodCallReplaceInfos.add(
-                                OrderByMethodCallReplaceInfo(
-                                    psiMethodCallExpression,
-                                    orderByCopy
+                            val copy = psiMethodCallExpression.copy() as PsiMethodCallExpression
+                            processOrderBy(project, copy)
+                            if (copy.text != psiMethodCallExpression.text) {
+                                methodCallReplaceInfos.add(
+                                    OrderByMethodCallReplaceInfo(
+                                        psiMethodCallExpression,
+                                        copy
+                                    )
                                 )
-                            )
-                            return
+                                return
+                            }
                         }
 
                         "orderAsc" -> {
                             val orderByCopy = psiMethodCallExpression.copy() as PsiMethodCallExpression
                             processOrderAsc(project, orderByCopy)
-                            methodCallReplaceInfos.add(
-                                OrderByMethodCallReplaceInfo(
-                                    psiMethodCallExpression,
-                                    orderByCopy
+                            if (orderByCopy.text != psiMethodCallExpression.text) {
+                                methodCallReplaceInfos.add(
+                                    OrderByMethodCallReplaceInfo(
+                                        psiMethodCallExpression,
+                                        orderByCopy
+                                    )
                                 )
-                            )
-                            return
+                                return
+                            }
                         }
 
                         "orderDesc" -> {
                             val orderByCopy = psiMethodCallExpression.copy() as PsiMethodCallExpression
                             processOrderDesc(project, orderByCopy)
-                            methodCallReplaceInfos.add(
-                                OrderByMethodCallReplaceInfo(
-                                    psiMethodCallExpression,
-                                    orderByCopy
+                            if (orderByCopy.text != psiMethodCallExpression.text) {
+                                methodCallReplaceInfos.add(
+                                    OrderByMethodCallReplaceInfo(
+                                        psiMethodCallExpression,
+                                        orderByCopy
+                                    )
                                 )
-                            )
-                            return
+                                return
+                            }
                         }
 
                         "setSqlSelect" -> {
                             val orderByCopy = psiMethodCallExpression.copy() as PsiMethodCallExpression
                             processSetSelect(project, orderByCopy)
-                            methodCallReplaceInfos.add(
-                                OrderByMethodCallReplaceInfo(
-                                    psiMethodCallExpression,
-                                    orderByCopy
+                            if (orderByCopy.text != psiMethodCallExpression.text) {
+                                methodCallReplaceInfos.add(
+                                    OrderByMethodCallReplaceInfo(
+                                        psiMethodCallExpression,
+                                        orderByCopy
+                                    )
                                 )
-                            )
-                            return
+                                return
+                            }
                         }
                     }
+
+                    super.visitMethodCallExpression(psiMethodCallExpression)
+
                 }
-
-
             })
         }
 
+        if (methodCallReplaceInfos.isEmpty()) {
+            return true;
+        }
 
         WriteCommandAction.runWriteCommandAction(project) {
-
             methodCallReplaceInfos.forEach {
                 it.oldMethodCallExpression.replace(it.newMethodCallExpression)
             }
-
         }
 
+        return false
     }
 
     private fun processOrderAsc(project: Project, psiMethodCallExpression: PsiMethodCallExpression) {
