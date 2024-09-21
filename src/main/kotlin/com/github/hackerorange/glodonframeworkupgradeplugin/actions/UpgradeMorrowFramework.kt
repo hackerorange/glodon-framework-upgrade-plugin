@@ -90,7 +90,6 @@ class MorrowFrameworkUpgradeBackgroundTask(project: Project, private val process
 
 
             for (currentPsiJavaFile in psiFiles) {
-                println("开始处理文件[${currentPsiJavaFile.name}]")
                 val startTime = System.currentTimeMillis()
 
                 current++
