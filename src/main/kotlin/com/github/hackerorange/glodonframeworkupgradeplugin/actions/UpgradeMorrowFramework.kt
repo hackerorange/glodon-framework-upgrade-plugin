@@ -45,7 +45,7 @@ class UpgradeMorrowFramework : AnAction() {
         processors.add(QueryWrapperOrderByProcessor())
         processors.add(BaseMapperSelectPageTypeConvertProcessor())
         processors.add(BaseMapperSelectCountConvertProcessor())
-//        processors.add(ShortenPsiJavaClassFileProcessor())
+        processors.add(ShortenPsiJavaClassFileProcessor())
 
         processors.forEach { it.init(project) }
 
