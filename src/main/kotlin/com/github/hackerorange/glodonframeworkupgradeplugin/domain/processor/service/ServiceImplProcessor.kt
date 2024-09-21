@@ -32,9 +32,13 @@ class ServiceImplProcessor : PsiFileProcessor {
             return
         }
         scene001(psiFile, project)
+        println("场景一处理完成")
         scene002(psiFile, project)
+        println("场景二处理完成")
         scene003(psiFile, project)
+        println("场景三处理完成")
         scene004(psiFile, project)
+        println("场景四处理完成")
 
         // 查找需要替换的类导入语句
         val importStatementReplaceContexts = findImportStatementWhichNeedReplace(project, psiFile)
