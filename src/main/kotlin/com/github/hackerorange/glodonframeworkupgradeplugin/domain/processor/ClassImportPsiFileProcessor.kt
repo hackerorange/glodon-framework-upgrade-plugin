@@ -1,5 +1,6 @@
 package com.github.hackerorange.glodonframeworkupgradeplugin.domain.processor
 
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.project.Project
 import com.intellij.psi.*
@@ -7,30 +8,32 @@ import com.intellij.psi.search.GlobalSearchScope
 
 class ClassImportPsiFileProcessor : PsiFileProcessor {
 
-    private val classQNameToReplaceClassMap: HashMap<String, PsiClass> = HashMap()
+    private val classQNameToReplaceClassMap: HashMap<String, PsiElement> = HashMap()
 
 
     override fun processPsiFile(project: Project, psiFile: PsiFile) {
 
-        psiFile.accept(object : JavaRecursiveElementVisitor() {
+        val replaceContexts: ArrayList<ReplaceContext> = ArrayList()
 
-            override fun visitImportStatement(statement: PsiImportStatement) {
 
-                for (item in classQNameToReplaceClassMap) {
-                    val text = statement.text
-                    if (text == "import ${item.key};") {
-                        val newBaseMapperClass = item.value
-                        val createImportStatement =
-                            JavaPsiFacade.getInstance(project).elementFactory.createImportStatement(
-                                newBaseMapperClass
-                            )
-                        WriteCommandAction.runWriteCommandAction(project) {
-                            statement.replace(createImportStatement)
+        ApplicationManager.getApplication().runReadAction {
+            psiFile.accept(object : JavaRecursiveElementVisitor() {
+                override fun visitImportStatement(statement: PsiImportStatement) {
+                    for (item in classQNameToReplaceClassMap) {
+                        val text = statement.text
+                        if (text == "import ${item.key};") {
+                            replaceContexts.add(ReplaceContext(statement, item.value))
                         }
                     }
                 }
+            })
+        }
+
+        WriteCommandAction.runWriteCommandAction(project) {
+            replaceContexts.forEach { replaceContext ->
+                replaceContext.oldElement.replace(replaceContext.newElement)
             }
-        })
+        }
     }
 
     override fun init(project: Project) {
@@ -47,9 +50,17 @@ class ClassImportPsiFileProcessor : PsiFileProcessor {
             )
 
             if (newBaseMapperClass != null) {
-                classQNameToReplaceClassMap[mutableEntry.key] = newBaseMapperClass
+                val createImportStatement = JavaPsiFacade
+                    .getInstance(project)
+                    .elementFactory
+                    .createImportStatement(newBaseMapperClass)
+
+                classQNameToReplaceClassMap[mutableEntry.key] = createImportStatement
             }
         }
     }
+
+    class ReplaceContext(val oldElement: PsiElement, val newElement: PsiElement)
+
 
 }
