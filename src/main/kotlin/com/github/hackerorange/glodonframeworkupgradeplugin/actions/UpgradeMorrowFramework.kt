@@ -2,7 +2,10 @@ package com.github.hackerorange.glodonframeworkupgradeplugin.actions
 
 import com.alibaba.fastjson.JSONObject
 import com.alibaba.fastjson.serializer.SerializerFeature
-import com.github.hackerorange.glodonframeworkupgradeplugin.domain.processor.*
+import com.github.hackerorange.glodonframeworkupgradeplugin.domain.processor.ClassImportPsiFileProcessor
+import com.github.hackerorange.glodonframeworkupgradeplugin.domain.processor.PsiFileProcessor
+import com.github.hackerorange.glodonframeworkupgradeplugin.domain.processor.QueryWrapperOrderByProcessor
+import com.github.hackerorange.glodonframeworkupgradeplugin.domain.processor.ShortenPsiJavaClassFileProcessor
 import com.github.hackerorange.glodonframeworkupgradeplugin.domain.processor.mapper.BaseMapperSelectCountConvertProcessor
 import com.github.hackerorange.glodonframeworkupgradeplugin.domain.processor.mapper.BaseMapperSelectPageTypeConvertProcessor
 import com.github.hackerorange.glodonframeworkupgradeplugin.domain.processor.mapper.ReplaceEntityWrapperToQueryWrapperProcessor
@@ -23,6 +26,7 @@ import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.vfs.VirtualFileFilter
 import com.intellij.psi.PsiJavaFile
 import com.intellij.psi.util.PsiUtilBase
+import com.jetbrains.rd.util.string.printToString
 import java.io.File
 import java.io.FileWriter
 
@@ -94,7 +98,23 @@ class MorrowFrameworkUpgradeBackgroundTask(project: Project, private val process
                 progressIndicator.text2 =
                     "Upgrading Java File ${currentPsiJavaFile.packageName}.${currentPsiJavaFile.name} by process [${processor::class.java.name}]"
                 progressIndicator.checkCanceled()
-                processor.processPsiFile(project, currentPsiJavaFile)
+                try {
+                    processor.processPsiFile(project, currentPsiJavaFile)
+                } catch (e: Exception) {
+                    project.guessProjectDir()?.let { virtualFile ->
+                        val dir = File(virtualFile.path + "/.idea")
+                        if (dir.exists().not()) {
+                            dir.mkdirs()
+                        }
+                        val file = File(dir, "morrowUpgradeError.txt")
+                        if (file.exists()) {
+                            file.delete()
+                        }
+                        val fileWriter = FileWriter(file)
+                        fileWriter.write(e.printToString())
+                    }
+
+                }
 
 
                 val endTime = System.currentTimeMillis()
@@ -167,6 +187,9 @@ class MorrowFrameworkUpgradeBackgroundTask(project: Project, private val process
             }
             // 是文件夹，继续后面的文件
             if (currentFile.isDirectory) {
+                if (currentFile.path.contains("/target/")) {
+                    return@iterateChildrenRecursively false
+                }
                 return@iterateChildrenRecursively true
             }
 

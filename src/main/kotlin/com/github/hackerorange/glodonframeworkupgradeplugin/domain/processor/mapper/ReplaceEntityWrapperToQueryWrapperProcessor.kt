@@ -1,6 +1,7 @@
 package com.github.hackerorange.glodonframeworkupgradeplugin.domain.processor.mapper
 
 import com.github.hackerorange.glodonframeworkupgradeplugin.domain.processor.PsiFileProcessor
+import com.intellij.codeInspection.isInheritorOf
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.project.Project
 import com.intellij.psi.*
@@ -42,15 +43,14 @@ class ReplaceEntityWrapperToQueryWrapperProcessor : PsiFileProcessor {
 
                 if (targetExpressionRealType !is PsiClassType) return
 
-                val rightType = psiNewExpression.type
+                val rightType = psiNewExpression.type ?: return
+
                 if (rightType !is PsiClassType) return
 
-                val resolve = rightType.resolve() ?: return
-                val isOldEntityWrapper =
-                    resolve == oldEntityWrapperClass || resolve.isInheritor(oldEntityWrapperClass!!, true)
-                if (!isOldEntityWrapper) {
+                if (!rightType.isInheritorOf(oldEntityWrapperClass!!.qualifiedName!!)) {
                     return
                 }
+
                 val substitutor = targetExpressionRealType.resolveGenerics().substitutor
                 if (substitutor.substitutionMap.values.size != 1) return
                 val entityClassType = ArrayList(substitutor.substitutionMap.values)[0]
@@ -109,44 +109,43 @@ class ReplaceEntityWrapperToQueryWrapperProcessor : PsiFileProcessor {
 
                         val type1 = psiTypeElement.type
                         if (type1 is PsiClassType) {
+
+                            type1.isInheritorOf(oldEntityWrapperClass!!.qualifiedName!!)
+
+                            if (!type1.isInheritorOf(oldEntityWrapperClass!!.qualifiedName!!))
+                                continue
+
                             val resolveGenerics = type1.resolveGenerics()
-                            val currentClass = resolveGenerics.element ?: continue
-                            if (currentClass == oldEntityWrapperClass || currentClass.isInheritor(
-                                    oldEntityWrapperClass!!,
-                                    true
-                                )
-                            ) {
-                                val substitutor = resolveGenerics.substitutor
-                                if (substitutor.substitutionMap.values.size != 1) {
+                            val substitutor = resolveGenerics.substitutor
+                            if (substitutor.substitutionMap.values.size != 1) {
 
-                                    val newType =
-                                        JavaPsiFacade.getInstance(project).elementFactory.createTypeFromText(
-                                            newEntityWrapperClass!!.qualifiedName + "<?>",
-                                            null
-                                        )
-
-                                    WriteCommandAction.runWriteCommandAction(project) {
-                                        psiTypeElement.replace(
-                                            JavaPsiFacade.getInstance(project).elementFactory.createTypeElement(
-                                                newType
-                                            )
-                                        )
-                                    }
-                                } else {
-                                    val entityClassType = ArrayList(substitutor.substitutionMap.values)[0]
-
-                                    val newType = JavaPsiFacade.getInstance(project).elementFactory.createTypeFromText(
-                                        newEntityWrapperClass!!.qualifiedName + "<${entityClassType?.canonicalText ?: "?"}>",
+                                val newType =
+                                    JavaPsiFacade.getInstance(project).elementFactory.createTypeFromText(
+                                        newEntityWrapperClass!!.qualifiedName + "<?>",
                                         null
                                     )
 
-                                    WriteCommandAction.runWriteCommandAction(project) {
-                                        psiTypeElement.replace(
-                                            JavaPsiFacade.getInstance(project).elementFactory.createTypeElement(
-                                                newType
-                                            )
+                                WriteCommandAction.runWriteCommandAction(project) {
+                                    psiTypeElement.replace(
+                                        JavaPsiFacade.getInstance(project).elementFactory.createTypeElement(
+                                            newType
                                         )
-                                    }
+                                    )
+                                }
+                            } else {
+                                val entityClassType = ArrayList(substitutor.substitutionMap.values)[0]
+
+                                val newType = JavaPsiFacade.getInstance(project).elementFactory.createTypeFromText(
+                                    newEntityWrapperClass!!.qualifiedName + "<${entityClassType?.canonicalText ?: "?"}>",
+                                    null
+                                )
+
+                                WriteCommandAction.runWriteCommandAction(project) {
+                                    psiTypeElement.replace(
+                                        JavaPsiFacade.getInstance(project).elementFactory.createTypeElement(
+                                            newType
+                                        )
+                                    )
                                 }
                             }
                         }
