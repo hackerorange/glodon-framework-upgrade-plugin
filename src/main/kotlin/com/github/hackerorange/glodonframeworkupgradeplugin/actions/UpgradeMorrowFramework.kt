@@ -43,9 +43,9 @@ class UpgradeMorrowFramework : AnAction() {
         processors.add(ReplaceEntityWrapperToQueryWrapperProcessor())
         processors.add(ServiceImplProcessor())
         processors.add(QueryWrapperOrderByProcessor())
-        processors.add(BaseMapperSelectPageTypeConvertProcessor())
-        processors.add(BaseMapperSelectCountConvertProcessor())
-        processors.add(ShortenPsiJavaClassFileProcessor())
+//        processors.add(BaseMapperSelectPageTypeConvertProcessor())
+//        processors.add(BaseMapperSelectCountConvertProcessor())
+//        processors.add(ShortenPsiJavaClassFileProcessor())
 
         processors.forEach { it.init(project) }
 
@@ -77,7 +77,7 @@ class MorrowFrameworkUpgradeBackgroundTask(project: Project, private val process
         psiFiles: ArrayList<PsiJavaFile>,
         progressIndicator: ProgressIndicator
     ) {
-        var current = 0;
+        var current = 0
         val total = psiFiles.size * (processors.size)
 
 
@@ -187,10 +187,7 @@ class MorrowFrameworkUpgradeBackgroundTask(project: Project, private val process
             }
             // 是文件夹，继续后面的文件
             if (currentFile.isDirectory) {
-                if (currentFile.path.contains("/target/")) {
-                    return@iterateChildrenRecursively false
-                }
-                return@iterateChildrenRecursively true
+                return@iterateChildrenRecursively !currentFile.path.contains("/target/")
             }
 
             // 是 java 文件的话，更新 base directory

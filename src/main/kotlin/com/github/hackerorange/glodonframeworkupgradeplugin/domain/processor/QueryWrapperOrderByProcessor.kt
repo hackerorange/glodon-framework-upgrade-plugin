@@ -1,5 +1,6 @@
 package com.github.hackerorange.glodonframeworkupgradeplugin.domain.processor
 
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.project.Project
 import com.intellij.psi.*
@@ -9,30 +10,88 @@ class QueryWrapperOrderByProcessor : PsiFileProcessor {
 
     private var entityWrapperClass: PsiClass? = null
 
+    class OrderByMethodCallReplaceInfo(val oldMethodCallExpression: PsiElement, val newMethodCallExpression: PsiElement)
+
+
     override fun processPsiFile(project: Project, psiFile: PsiFile) {
 
-        psiFile.accept(object : JavaRecursiveElementVisitor() {
+        val methodCallReplaceInfos = ArrayList<OrderByMethodCallReplaceInfo>()
 
-            override fun visitMethodCallExpression(psiMethodCallExpression: PsiMethodCallExpression) {
 
-                val methodExpression = psiMethodCallExpression.methodExpression
-                if (methodExpression.referenceName == "orderBy") {
-                    processOrderBy(project, psiMethodCallExpression)
+        ApplicationManager.getApplication().runReadAction {
+
+            psiFile.accept(object : JavaRecursiveElementVisitor() {
+
+                override fun visitMethodCallExpression(psiMethodCallExpression: PsiMethodCallExpression) {
+
+                    super.visitMethodCallExpression(psiMethodCallExpression)
+
+                    val methodExpression = psiMethodCallExpression.methodExpression
+
+                    when (methodExpression.referenceName) {
+                        "orderBy" -> {
+                            val orderByCopy = psiMethodCallExpression.copy() as PsiMethodCallExpression
+                            processOrderBy(project, orderByCopy)
+                            methodCallReplaceInfos.add(
+                                OrderByMethodCallReplaceInfo(
+                                    psiMethodCallExpression,
+                                    orderByCopy
+                                )
+                            )
+                            return
+                        }
+
+                        "orderAsc" -> {
+                            val orderByCopy = psiMethodCallExpression.copy() as PsiMethodCallExpression
+                            processOrderAsc(project, orderByCopy)
+                            methodCallReplaceInfos.add(
+                                OrderByMethodCallReplaceInfo(
+                                    psiMethodCallExpression,
+                                    orderByCopy
+                                )
+                            )
+                            return
+                        }
+
+                        "orderDesc" -> {
+                            val orderByCopy = psiMethodCallExpression.copy() as PsiMethodCallExpression
+                            processOrderDesc(project, orderByCopy)
+                            methodCallReplaceInfos.add(
+                                OrderByMethodCallReplaceInfo(
+                                    psiMethodCallExpression,
+                                    orderByCopy
+                                )
+                            )
+                            return
+                        }
+
+                        "setSqlSelect" -> {
+                            val orderByCopy = psiMethodCallExpression.copy() as PsiMethodCallExpression
+                            processSetSelect(project, orderByCopy)
+                            methodCallReplaceInfos.add(
+                                OrderByMethodCallReplaceInfo(
+                                    psiMethodCallExpression,
+                                    orderByCopy
+                                )
+                            )
+                            return
+                        }
+                    }
                 }
-                if (methodExpression.referenceName == "orderAsc") {
-                    processOrderAsc(project, psiMethodCallExpression)
-                }
-                if (methodExpression.referenceName == "orderDesc") {
-                    processOrderDesc(project, psiMethodCallExpression)
-                }
-                if (methodExpression.referenceName == "setSqlSelect") {
-                    processSetSelect(project, psiMethodCallExpression)
-                }
-                super.visitMethodCallExpression(psiMethodCallExpression)
+
+
+            })
+        }
+
+
+        WriteCommandAction.runWriteCommandAction(project) {
+
+            methodCallReplaceInfos.forEach {
+                it.oldMethodCallExpression.replace(it.newMethodCallExpression)
             }
 
+        }
 
-        })
     }
 
     private fun processOrderAsc(project: Project, psiMethodCallExpression: PsiMethodCallExpression) {
@@ -45,9 +104,7 @@ class QueryWrapperOrderByProcessor : PsiFileProcessor {
             val psiIdentifier = filter[0]
 
             val createIdentifier = JavaPsiFacade.getInstance(project).elementFactory.createIdentifier("orderByAsc")
-            WriteCommandAction.runWriteCommandAction(project) {
-                psiIdentifier.replace(createIdentifier)
-            }
+            psiIdentifier.replace(createIdentifier)
         }
     }
 
@@ -61,9 +118,7 @@ class QueryWrapperOrderByProcessor : PsiFileProcessor {
             val psiIdentifier = filter[0]
 
             val createIdentifier = JavaPsiFacade.getInstance(project).elementFactory.createIdentifier("select")
-            WriteCommandAction.runWriteCommandAction(project) {
-                psiIdentifier.replace(createIdentifier)
-            }
+            psiIdentifier.replace(createIdentifier)
         }
     }
 
@@ -74,11 +129,9 @@ class QueryWrapperOrderByProcessor : PsiFileProcessor {
 
         if (filter.size == 1) {
             val psiIdentifier = filter[0]
-
             val createIdentifier = JavaPsiFacade.getInstance(project).elementFactory.createIdentifier("orderByDesc")
-            WriteCommandAction.runWriteCommandAction(project) {
-                psiIdentifier.replace(createIdentifier)
-            }
+            psiIdentifier.replace(createIdentifier)
+
         }
     }
 
@@ -99,15 +152,13 @@ class QueryWrapperOrderByProcessor : PsiFileProcessor {
                     psiExpressions.add(expression.copy())
                 }
 
-                WriteCommandAction.runWriteCommandAction(project) {
-                    argumentList.expressions.forEach { it.delete() }
+                argumentList.expressions.forEach { it.delete() }
 
-                    val trueExpression =
-                        JavaPsiFacade.getInstance(project).elementFactory.createExpressionFromText("true", null)
-                    argumentList.add(trueExpression)
-                    argumentList.add(trueExpression)
-                    argumentList.add(psiExpressions[0])
-                }
+                val trueExpression =
+                    JavaPsiFacade.getInstance(project).elementFactory.createExpressionFromText("true", null)
+                argumentList.add(trueExpression)
+                argumentList.add(trueExpression)
+                argumentList.add(psiExpressions[0])
             }
         }
 
@@ -125,15 +176,13 @@ class QueryWrapperOrderByProcessor : PsiFileProcessor {
                     psiExpressions.add(expression.copy())
                 }
 
-                WriteCommandAction.runWriteCommandAction(project) {
-                    argumentList.expressions.forEach { it.delete() }
+                argumentList.expressions.forEach { it.delete() }
 
-                    val trueExpression =
-                        JavaPsiFacade.getInstance(project).elementFactory.createExpressionFromText("true", null)
-                    argumentList.add(trueExpression)
-                    argumentList.add(psiExpressions[1])
-                    argumentList.add(psiExpressions[0])
-                }
+                val trueExpression =
+                    JavaPsiFacade.getInstance(project).elementFactory.createExpressionFromText("true", null)
+                argumentList.add(trueExpression)
+                argumentList.add(psiExpressions[1])
+                argumentList.add(psiExpressions[0])
             }
         }
 
