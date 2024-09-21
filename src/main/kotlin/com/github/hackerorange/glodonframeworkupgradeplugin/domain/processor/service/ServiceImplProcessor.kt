@@ -102,6 +102,9 @@ class ServiceImplProcessor : PsiFileProcessor {
             psiFile.accept(object : JavaRecursiveElementVisitor() {
 
                 override fun visitImportStatement(statement: PsiImportStatement) {
+                    println(statement.text)
+                    println("import ${oldServiceImplClass!!.qualifiedName};")
+                    println("----------")
                     if (statement.text == "import ${oldServiceImplClass!!.qualifiedName};") {
                         val newImportStatement = JavaPsiFacade.getInstance(project).elementFactory
                             .createImportStatement(newServiceImplClass!!)
