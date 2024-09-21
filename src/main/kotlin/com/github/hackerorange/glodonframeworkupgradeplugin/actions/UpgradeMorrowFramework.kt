@@ -1,10 +1,11 @@
 package com.github.hackerorange.glodonframeworkupgradeplugin.actions
 
 import com.github.hackerorange.glodonframeworkupgradeplugin.domain.*
-import com.intellij.codeInsight.actions.OptimizeImportsProcessor
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
-import com.intellij.openapi.command.WriteCommandAction
+import com.intellij.openapi.progress.PerformInBackgroundOption
+import com.intellij.openapi.progress.ProgressIndicator
+import com.intellij.openapi.progress.Task
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.project.modules
 import com.intellij.openapi.project.rootManager
@@ -12,13 +13,10 @@ import com.intellij.openapi.vfs.VfsUtilCore
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.vfs.VirtualFileFilter
 import com.intellij.psi.PsiJavaFile
-import com.intellij.psi.codeStyle.JavaCodeStyleManager
 import com.intellij.psi.util.PsiUtilBase
-import com.intellij.util.DocumentUtil
 
 
 class UpgradeMorrowFramework : AnAction() {
-
 
     override fun actionPerformed(anActionEvent: AnActionEvent) {
         val project = anActionEvent.project
@@ -34,17 +32,67 @@ class UpgradeMorrowFramework : AnAction() {
 
         processors.forEach { it.init(project) }
 
-        for (module in project.modules) {
+        val morrowFrameworkUpgradeBackgroundTask = MorrowFrameworkUpgradeBackgroundTask(project, processors)
+        morrowFrameworkUpgradeBackgroundTask.queue()
+    }
+}
+
+
+class MorrowFrameworkUpgradeBackgroundTask(project: Project, private val processors: ArrayList<PsiFileProcessor>) :
+    Task.Backgroundable(
+        project,
+        "Upgrading Morrow Framework from [v3.4.0] to [5.0.0]",
+        false,
+        PerformInBackgroundOption.ALWAYS_BACKGROUND
+    ) {
+
+    override fun run(progressIndicator: ProgressIndicator) {
+        val modules = project.modules
+
+//        ApplicationManager.getApplication().invokeLater {
+        val psiFiles: ArrayList<PsiJavaFile> = ArrayList()
+
+//            ApplicationManager.getApplication().runReadAction {
+        for (module in modules) {
             module.rootManager.sourceRoots.forEach {
-                processSourceFiles(project, it, processors)
+                collectAllJavaFile(project, it, psiFiles)
             }
         }
+//            }
+
+        if (psiFiles.isEmpty()) {
+            return
+        }
+
+        var current = 0;
+        val total = psiFiles.size * processors.size
+
+        for (currentPsiJavaFile in psiFiles) {
+            for (processor in processors) {
+                current++
+                progressIndicator.isIndeterminate = false
+                progressIndicator.fraction = current / (total.toDouble())
+                progressIndicator.text2 = "Upgrading Java File ${currentPsiJavaFile.virtualFile.canonicalPath}"
+
+                processor.processPsiFile(project, currentPsiJavaFile)
+            }
+
+
+//            ApplicationManager.getApplication().invokeLater {
+//                JavaCodeStyleManager.getInstance(project)
+//                    .shortenClassReferences(currentPsiJavaFile)
+//            }
+
+//        }
+
+        }
+
     }
 
-    private fun processSourceFiles(
+    private fun collectAllJavaFile(
         project: Project,
         sourceFile: VirtualFile,
-        processors: ArrayList<PsiFileProcessor>
+        psiFiles: ArrayList<in PsiJavaFile>
     ) {
         VfsUtilCore.iterateChildrenRecursively(sourceFile, VirtualFileFilter.ALL) { currentFile: VirtualFile ->
 
@@ -66,24 +114,9 @@ class UpgradeMorrowFramework : AnAction() {
             if (psiFile !is PsiJavaFile) {
                 return@iterateChildrenRecursively true
             }
-            processJavaFile(project, processors, psiFile)
+            psiFiles.add(psiFile)
             true
         }
-
-
     }
 
-    private fun processJavaFile(
-        project: Project,
-        processors: ArrayList<PsiFileProcessor>,
-        psiJavaFile: PsiJavaFile
-    ) {
-        for (processor in processors) {
-            processor.processPsiFile(project, psiJavaFile)
-        }
-
-        WriteCommandAction.runWriteCommandAction(project) {
-            JavaCodeStyleManager.getInstance(project).shortenClassReferences(psiJavaFile)
-        }
-    }
 }
