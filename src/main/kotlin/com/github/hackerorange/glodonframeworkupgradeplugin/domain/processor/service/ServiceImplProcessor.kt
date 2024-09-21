@@ -33,13 +33,10 @@ class ServiceImplProcessor : PsiFileProcessor {
 
 
         scene001(psiFile, project)
-        println("场景一处理完成")
         scene002(psiFile, project)
-        println("场景二处理完成")
         scene003(psiFile, project)
-        println("场景三处理完成")
         scene004(psiFile, project)
-        println("场景四处理完成")
+//        scene005(psiFile, project)
 
         changeImportStatement(project, psiFile)
 
@@ -108,7 +105,7 @@ class ServiceImplProcessor : PsiFileProcessor {
                                 oldMethodCallExpression = oldMethodCallExpression.substring(5)
                             }
                             if (oldMethodCallExpression.startsWith("super.")) {
-                                oldMethodCallExpression = oldMethodCallExpression.substring(5)
+                                oldMethodCallExpression = oldMethodCallExpression.substring(6)
                             }
 
 
@@ -162,7 +159,7 @@ class ServiceImplProcessor : PsiFileProcessor {
                                 oldMethodCallExpression = oldMethodCallExpression.substring(5)
                             }
                             if (oldMethodCallExpression.startsWith("super.")) {
-                                oldMethodCallExpression = oldMethodCallExpression.substring(5)
+                                oldMethodCallExpression = oldMethodCallExpression.substring(6)
                             }
 
                             val newMethodCallExpression =
@@ -219,7 +216,62 @@ class ServiceImplProcessor : PsiFileProcessor {
                                 oldMethodCallExpression = oldMethodCallExpression.substring(5)
                             }
                             if (oldMethodCallExpression.startsWith("super.")) {
+                                oldMethodCallExpression = oldMethodCallExpression.substring(6)
+                            }
+
+                            oldMethodCallExpression = oldMethodCallExpression.replaceFirst("selectObj", "selectObjs")
+
+                            val newStatement =
+                                JavaPsiFacade.getInstance(project).elementFactory.createExpressionFromText(
+                                    "this.baseMapper.${oldMethodCallExpression}.stream().filter(java.util.Objects::nonNull).findFirst().orElse(null)",
+                                    null
+                                )
+                            methodCallStatementReplaceInfos.add(
+                                MethodCallStatementReplaceInfo(
+                                    methodCallExpression,
+                                    newStatement
+                                )
+                            )
+                        }
+                    }
+                })
+            }
+        }
+        // 替换方法调用语句
+        replaceMethodCallStatements(project, methodCallStatementReplaceInfos)
+    }
+
+    private fun scene005(psiFile: PsiJavaFile, project: Project) {
+        // 查找需要替换的方法调用语句
+        val methodCallStatementReplaceInfos = ArrayList<MethodCallStatementReplaceInfo>()
+        ApplicationManager.getApplication().runReadAction {
+            for (psiClass in psiFile.classes) {
+                if (!psiClass.isInheritor(oldServiceImplClass!!, true)) {
+                    continue
+                }
+
+                psiClass.accept(object : JavaRecursiveElementVisitor() {
+
+                    override fun visitMethodCallExpression(methodCallExpression: PsiMethodCallExpression) {
+
+                        super.visitMethodCallExpression(methodCallExpression)
+
+                        if (methodCallExpression.methodExpression.referenceName == "selectObj") {
+                            val resolveMethod = methodCallExpression.resolveMethod()
+                            if (resolveMethod == null) {
+                                return
+                            }
+                            if (oldServiceImplClass != resolveMethod.containingClass) {
+                                return
+                            }
+
+                            var oldMethodCallExpression = methodCallExpression.text
+
+                            if (oldMethodCallExpression.startsWith("this.")) {
                                 oldMethodCallExpression = oldMethodCallExpression.substring(5)
+                            }
+                            if (oldMethodCallExpression.startsWith("super.")) {
+                                oldMethodCallExpression = oldMethodCallExpression.substring(6)
                             }
 
                             oldMethodCallExpression = oldMethodCallExpression.replaceFirst("selectObj", "selectObjs")
@@ -349,7 +401,7 @@ class ServiceImplProcessor : PsiFileProcessor {
                         oldMethodCallExpression = oldMethodCallExpression.substring(5)
                     }
                     if (oldMethodCallExpression.startsWith("super.")) {
-                        oldMethodCallExpression = oldMethodCallExpression.substring(5)
+                        oldMethodCallExpression = oldMethodCallExpression.substring(6)
                     }
                     val createReferenceFromText =
                         JavaPsiFacade.getInstance(project).elementFactory.createExpressionFromText(
