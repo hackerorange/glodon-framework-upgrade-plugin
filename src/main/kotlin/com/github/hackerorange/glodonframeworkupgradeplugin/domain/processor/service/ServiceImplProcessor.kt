@@ -31,6 +31,8 @@ class ServiceImplProcessor : PsiFileProcessor {
         if (psiFile !is PsiJavaFile) {
             return
         }
+
+
         scene001(psiFile, project)
         println("场景一处理完成")
         scene002(psiFile, project)
@@ -40,6 +42,11 @@ class ServiceImplProcessor : PsiFileProcessor {
         scene004(psiFile, project)
         println("场景四处理完成")
 
+        changeImportStatement(project, psiFile)
+
+    }
+
+    private fun changeImportStatement(project: Project, psiFile: PsiFile) {
         // 查找需要替换的类导入语句
         val importStatementReplaceContexts = findImportStatementWhichNeedReplace(project, psiFile)
 
@@ -88,7 +95,7 @@ class ServiceImplProcessor : PsiFileProcessor {
                         super.visitMethodCallExpression(expression)
 
 
-                        methodNames.firstOrNull { expression.methodExpression.referenceName == it }.let { _ ->
+                        methodNames.firstOrNull { expression.methodExpression.referenceName == it }?.let { _ ->
 
                             val resolveMethod = expression.resolveMethod()
                                 ?: return
@@ -201,6 +208,9 @@ class ServiceImplProcessor : PsiFileProcessor {
                         if (methodCallExpression.methodExpression.referenceName == "selectObj") {
                             val resolveMethod = methodCallExpression.resolveMethod()
                             if (resolveMethod == null) {
+                                return
+                            }
+                            if (oldServiceImplClass != resolveMethod.containingClass) {
                                 return
                             }
 
