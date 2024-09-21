@@ -38,7 +38,7 @@ class BaseMapperSelectPageTypeConvertProcessor : PsiFileProcessor {
     ): ArrayList<MethodCallStatementReplaceInfo> {
         val methodCallStatementReplaceInfos = ArrayList<MethodCallStatementReplaceInfo>()
 
-        ApplicationManager.getApplication().run {
+        ApplicationManager.getApplication().runReadAction {
             psiFile.accept(object : JavaRecursiveElementVisitor() {
 
                 override fun visitAssignmentExpression(expression: PsiAssignmentExpression) {
