@@ -53,12 +53,9 @@ class MorrowFrameworkUpgradeBackgroundTask(project: Project, private val process
     override fun run(progressIndicator: ProgressIndicator) {
         val modules = project.modules
 
-        ApplicationManager.getApplication().invokeLater {
-
-            val psiFiles: ArrayList<PsiJavaFile> = scanAllJavaPsiFileFromModules(modules)
-            if (psiFiles.isNotEmpty()) {
-                upgradePsiJavaFiles(psiFiles, progressIndicator)
-            }
+        val psiFiles: ArrayList<PsiJavaFile> = scanAllJavaPsiFileFromModules(modules)
+        if (psiFiles.isNotEmpty()) {
+            upgradePsiJavaFiles(psiFiles, progressIndicator)
         }
     }
 
@@ -116,11 +113,14 @@ class MorrowFrameworkUpgradeBackgroundTask(project: Project, private val process
                 return@iterateChildrenRecursively true
             }
 
-            val psiFile = PsiUtilBase.getPsiFile(project, currentFile)
-            if (psiFile !is PsiJavaFile) {
-                return@iterateChildrenRecursively true
-            }
-            psiFiles.add(psiFile)
+            ApplicationManager
+                .getApplication()
+                .runReadAction {
+                    val psiFile = PsiUtilBase.getPsiFile(project, currentFile)
+                    if (psiFile is PsiJavaFile) {
+                        psiFiles.add(psiFile)
+                    }
+                }
             true
         }
     }

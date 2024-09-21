@@ -1,7 +1,9 @@
 package com.github.hackerorange.glodonframeworkupgradeplugin.domain
 
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.util.Computable
 import com.intellij.psi.*
 import com.intellij.psi.search.GlobalSearchScope
 
@@ -17,7 +19,8 @@ class ClassImportPsiFileProcessor : PsiFileProcessor {
             override fun visitImportStatement(statement: PsiImportStatement) {
 
                 for (item in classQNameToReplaceClassMap) {
-                    if (statement.text == "import ${item.key};") {
+                    val text = ApplicationManager.getApplication().runReadAction(Computable { statement.text })
+                    if (text == "import ${item.key};") {
                         val newBaseMapperClass = item.value
                         val createImportStatement =
                             JavaPsiFacade.getInstance(project).elementFactory.createImportStatement(
