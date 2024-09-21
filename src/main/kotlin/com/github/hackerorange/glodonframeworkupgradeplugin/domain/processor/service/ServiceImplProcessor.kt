@@ -282,6 +282,7 @@ class ServiceImplProcessor : PsiFileProcessor {
 
                 }
             })
+            return result
         }
     }
 
