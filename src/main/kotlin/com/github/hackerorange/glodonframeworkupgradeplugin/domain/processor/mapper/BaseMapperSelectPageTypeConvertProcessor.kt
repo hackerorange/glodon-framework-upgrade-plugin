@@ -166,7 +166,7 @@ class BaseMapperSelectPageTypeConvertProcessor : PsiFileProcessor {
             JavaPsiFacade.getInstance(project).elementFactory.createExpressionFromText(
                 "${rightExpression.text}.getRecords()", null
             )
-        rightExpression.replace(newMethodCallExpression);
+
         methodCallStatementReplaceInfos.add(
             MethodCallStatementReplaceInfo(
                 rightExpression,
