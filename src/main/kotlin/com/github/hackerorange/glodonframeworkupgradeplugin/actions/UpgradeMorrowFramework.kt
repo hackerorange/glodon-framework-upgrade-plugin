@@ -5,6 +5,7 @@ import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.command.WriteCommandAction
+import com.intellij.openapi.module.Module
 import com.intellij.openapi.progress.PerformInBackgroundOption
 import com.intellij.openapi.progress.ProgressIndicator
 import com.intellij.openapi.progress.Task
@@ -52,35 +53,46 @@ class MorrowFrameworkUpgradeBackgroundTask(project: Project, private val process
     override fun run(progressIndicator: ProgressIndicator) {
         val modules = project.modules
 
-        val psiFiles: ArrayList<PsiJavaFile> = ArrayList()
         ApplicationManager.getApplication().invokeLater {
-            for (module in modules) {
-                module.rootManager.sourceRoots.forEach {
-                    collectAllJavaFile(project, it, psiFiles)
-                }
-            }
-            if (psiFiles.isEmpty()) {
-                return@invokeLater
-            }
 
-            var current = 0;
-            val total = psiFiles.size * processors.size
-
-            for (currentPsiJavaFile in psiFiles) {
-                for (processor in processors) {
-                    current++
-                    progressIndicator.isIndeterminate = false
-                    progressIndicator.fraction = current / (total.toDouble())
-                    progressIndicator.text2 = "Upgrading Java File ${currentPsiJavaFile.virtualFile.canonicalPath}"
-
-                    processor.processPsiFile(project, currentPsiJavaFile)
-                }
-
-                WriteCommandAction.runWriteCommandAction(project) {
-                    JavaCodeStyleManager.getInstance(project).shortenClassReferences(currentPsiJavaFile)
-                }
+            val psiFiles: ArrayList<PsiJavaFile> = scanAllJavaPsiFileFromModules(modules)
+            if (psiFiles.isNotEmpty()) {
+                upgradePsiJavaFiles(psiFiles, progressIndicator)
             }
         }
+    }
+
+    private fun upgradePsiJavaFiles(
+        psiFiles: ArrayList<PsiJavaFile>,
+        progressIndicator: ProgressIndicator
+    ) {
+        var current = 0;
+        val total = psiFiles.size * processors.size
+
+        for (currentPsiJavaFile in psiFiles) {
+            for (processor in processors) {
+                current++
+                progressIndicator.isIndeterminate = false
+                progressIndicator.fraction = current / (total.toDouble())
+                progressIndicator.text2 = "Upgrading Java File ${currentPsiJavaFile.virtualFile.canonicalPath}"
+
+                processor.processPsiFile(project, currentPsiJavaFile)
+            }
+
+            WriteCommandAction.runWriteCommandAction(project) {
+                JavaCodeStyleManager.getInstance(project).shortenClassReferences(currentPsiJavaFile)
+            }
+        }
+    }
+
+    private fun scanAllJavaPsiFileFromModules(modules: Array<Module>): ArrayList<PsiJavaFile> {
+        val psiFiles: ArrayList<PsiJavaFile> = ArrayList()
+        for (module in modules) {
+            module.rootManager.sourceRoots.forEach {
+                collectAllJavaFile(project, it, psiFiles)
+            }
+        }
+        return psiFiles
     }
 
     private fun collectAllJavaFile(
