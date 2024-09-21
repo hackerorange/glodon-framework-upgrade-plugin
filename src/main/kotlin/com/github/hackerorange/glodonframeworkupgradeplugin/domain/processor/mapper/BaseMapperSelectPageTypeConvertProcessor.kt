@@ -1,12 +1,18 @@
 package com.github.hackerorange.glodonframeworkupgradeplugin.domain.processor.mapper
 
 import com.github.hackerorange.glodonframeworkupgradeplugin.domain.processor.PsiFileProcessor
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.project.Project
 import com.intellij.psi.*
 import com.intellij.psi.search.GlobalSearchScope
 
 class BaseMapperSelectPageTypeConvertProcessor : PsiFileProcessor {
+
+    class MethodCallStatementReplaceInfo(
+        val oldMethodCallExpression: PsiElement,
+        val newMethodCallExpression: PsiElement
+    )
 
     private var mybatisPlusPageClass: PsiClass? = null
     private var listClass: PsiClass? = null
@@ -16,82 +22,119 @@ class BaseMapperSelectPageTypeConvertProcessor : PsiFileProcessor {
             return
         }
 
-        psiFile.accept(object : JavaRecursiveElementVisitor() {
+        val methodCallStatementReplaceInfos = prepareMethodCallExpressionWhichNeedReplace(psiFile, project)
 
-            override fun visitAssignmentExpression(expression: PsiAssignmentExpression) {
-
-                val lExpression = expression.lExpression
-                val rExpression = expression.rExpression ?: return
-                getRecordsOfPageIfMatched(lExpression.type ?: return, rExpression.type ?: return, project, rExpression)
-
-                // 先处理好语句后，再做判断
-                super.visitAssignmentExpression(expression)
+        WriteCommandAction.runWriteCommandAction(project) {
+            methodCallStatementReplaceInfos.forEach {
+                it.oldMethodCallExpression.replace(it.newMethodCallExpression)
             }
+        }
 
-            override fun visitReturnStatement(psiReturnStatement: PsiReturnStatement) {
+    }
 
-                super.visitReturnStatement(psiReturnStatement)
+    private fun prepareMethodCallExpressionWhichNeedReplace(
+        psiFile: PsiFile,
+        project: Project
+    ): ArrayList<MethodCallStatementReplaceInfo> {
+        val methodCallStatementReplaceInfos = ArrayList<MethodCallStatementReplaceInfo>()
 
-                var psiElement: PsiElement = psiReturnStatement
+        ApplicationManager.getApplication().run {
+            psiFile.accept(object : JavaRecursiveElementVisitor() {
 
-                while (psiElement !is PsiMethod) {
-                    psiElement = psiElement.parent
+                override fun visitAssignmentExpression(expression: PsiAssignmentExpression) {
 
-                    if (psiElement == null) {
-                        return
-                    }
+                    val lExpression = expression.lExpression
+                    val rExpression = expression.rExpression ?: return
+                    getRecordsOfPageIfMatched(
+                        lExpression.type ?: return,
+                        rExpression.type ?: return,
+                        project,
+                        rExpression,
+                        methodCallStatementReplaceInfos
+                    )
 
-                    if (psiElement is PsiClass) {
-                        return
-                    }
-
-                    if (psiElement is PsiLambdaExpression) {
-                        return
-                    }
-
-                    if (psiElement is PsiMethod) {
-                        val lType = psiElement.returnType ?: return
-                        val returnValue = psiReturnStatement.returnValue ?: return
-                        getRecordsOfPageIfMatched(lType, returnValue.type ?: return, project, returnValue)
-                    }
+                    // 先处理好语句后，再做判断
+                    super.visitAssignmentExpression(expression)
                 }
-            }
 
-            override fun visitClass(aClass: PsiClass) {
-                super.visitClass(aClass)
-            }
+                override fun visitReturnStatement(psiReturnStatement: PsiReturnStatement) {
 
-            override fun visitLambdaExpression(lambdaExpression: PsiLambdaExpression) {
-                super.visitLambdaExpression(lambdaExpression)
-            }
+                    super.visitReturnStatement(psiReturnStatement)
 
-            override fun visitDeclarationStatement(statestatementment: PsiDeclarationStatement) {
+                    var psiElement: PsiElement = psiReturnStatement
 
-                super.visitDeclarationStatement(statestatementment)
+                    while (psiElement !is PsiMethod) {
+                        psiElement = psiElement.parent
 
-                for (declaredElement in statestatementment.declaredElements) {
-
-                    if (declaredElement is PsiLocalVariable) {
-                        val variableType = declaredElement.type
-                        val psiExpression = declaredElement.initializer ?: continue
-
-                        val initialType = psiExpression.type ?: return
-                        if (initialType == variableType) {
-                            continue
+                        if (psiElement == null) {
+                            return
                         }
-                        getRecordsOfPageIfMatched(variableType, initialType, project, declaredElement.initializer!!)
+
+                        if (psiElement is PsiClass) {
+                            return
+                        }
+
+                        if (psiElement is PsiLambdaExpression) {
+                            return
+                        }
+
+                        if (psiElement is PsiMethod) {
+                            val lType = psiElement.returnType ?: return
+                            val returnValue = psiReturnStatement.returnValue ?: return
+                            getRecordsOfPageIfMatched(
+                                lType,
+                                returnValue.type ?: return,
+                                project,
+                                returnValue,
+                                methodCallStatementReplaceInfos
+                            )
+                        }
                     }
                 }
-            }
-        })
 
+                override fun visitClass(aClass: PsiClass) {
+                    super.visitClass(aClass)
+                }
+
+                override fun visitLambdaExpression(lambdaExpression: PsiLambdaExpression) {
+                    super.visitLambdaExpression(lambdaExpression)
+                }
+
+                override fun visitDeclarationStatement(statestatementment: PsiDeclarationStatement) {
+
+                    super.visitDeclarationStatement(statestatementment)
+
+                    for (declaredElement in statestatementment.declaredElements) {
+
+                        if (declaredElement is PsiLocalVariable) {
+                            val variableType = declaredElement.type
+                            val psiExpression = declaredElement.initializer ?: continue
+
+                            val initialType = psiExpression.type ?: return
+                            if (initialType == variableType) {
+                                continue
+                            }
+                            getRecordsOfPageIfMatched(
+                                variableType,
+                                initialType,
+                                project,
+                                declaredElement.initializer!!,
+                                methodCallStatementReplaceInfos
+                            )
+                        }
+                    }
+                }
+            })
+        }
+        return methodCallStatementReplaceInfos
     }
 
     private fun getRecordsOfPageIfMatched(
         leftType: PsiType,
         rightType: PsiType,
         project: Project,
-        rightExpression: PsiExpression
+        rightExpression: PsiExpression,
+        methodCallStatementReplaceInfos: ArrayList<MethodCallStatementReplaceInfo>
     ) {
         if (leftType == rightType) {
             return
@@ -99,34 +142,37 @@ class BaseMapperSelectPageTypeConvertProcessor : PsiFileProcessor {
         if (rightExpression !is PsiMethodCallExpression) {
             return
         }
-        val referenceName = rightExpression.methodExpression.referenceName
+//        val referenceName = rightExpression.methodExpression.referenceName
 //        if (referenceName != "selectPage") {
 //            return
 //        }
-        if (leftType is PsiClassType && rightType is PsiClassType) {
-
-
-            val variableTypeClass = leftType.resolve() ?: return
-            val initialTypeClass = rightType.resolve() ?: return
-
-
-            val isVariableList =
-                variableTypeClass == listClass || variableTypeClass.isInheritor(listClass!!, true)
-            val isInitialPage =
-                initialTypeClass == mybatisPlusPageClass || initialTypeClass.isInheritor(
-                    mybatisPlusPageClass!!,
-                    true
-                )
-            if (isVariableList && isInitialPage) {
-                WriteCommandAction.runWriteCommandAction(project) {
-                    val methodNewIdentity =
-                        JavaPsiFacade.getInstance(project).elementFactory.createExpressionFromText(
-                            "${rightExpression.text}.getRecords()", null
-                        )
-                    rightExpression.replace(methodNewIdentity);
-                }
-            }
+        if (leftType !is PsiClassType || rightType !is PsiClassType) {
+            return
         }
+        val variableTypeClass = leftType.resolve()
+            ?: return
+
+        val initialTypeClass = rightType.resolve()
+            ?: return
+
+
+        if (variableTypeClass != listClass && !variableTypeClass.isInheritor(listClass!!, true)) {
+            return
+        }
+        if (initialTypeClass != mybatisPlusPageClass && !initialTypeClass.isInheritor(mybatisPlusPageClass!!, true)) {
+            return
+        }
+        val newMethodCallExpression =
+            JavaPsiFacade.getInstance(project).elementFactory.createExpressionFromText(
+                "${rightExpression.text}.getRecords()", null
+            )
+        rightExpression.replace(newMethodCallExpression);
+        methodCallStatementReplaceInfos.add(
+            MethodCallStatementReplaceInfo(
+                rightExpression,
+                newMethodCallExpression
+            )
+        )
     }
 
 
