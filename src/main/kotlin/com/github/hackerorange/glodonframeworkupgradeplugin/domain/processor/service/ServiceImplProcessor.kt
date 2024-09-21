@@ -173,17 +173,17 @@ class ServiceImplProcessor : PsiFileProcessor {
 
         psiClass.accept(object : JavaRecursiveElementVisitor() {
 
-            override fun visitMethodCallExpression(expression: PsiMethodCallExpression) {
+            override fun visitMethodCallExpression(methodCallExpression: PsiMethodCallExpression) {
 
-                super.visitMethodCallExpression(expression)
+                super.visitMethodCallExpression(methodCallExpression)
 
-                if (expression.methodExpression.referenceName == "selectCount") {
-                    val resolveMethod = expression.resolveMethod()
+                if (methodCallExpression.methodExpression.referenceName == "selectCount") {
+                    val resolveMethod = methodCallExpression.resolveMethod()
                     if (resolveMethod == null) {
                         return
                     }
 
-                    var oldMethodCallExpression = expression.text
+                    var oldMethodCallExpression = methodCallExpression.text
 
                     if (oldMethodCallExpression.startsWith("this.")) {
                         oldMethodCallExpression = oldMethodCallExpression.substring(5)
@@ -192,21 +192,21 @@ class ServiceImplProcessor : PsiFileProcessor {
                         oldMethodCallExpression = oldMethodCallExpression.substring(5)
                     }
 
-                    val newStatement =
+                    val newMethodCallExpression =
                         JavaPsiFacade.getInstance(project).elementFactory.createExpressionFromText(
                             "java.util.Optional.ofNullable(this.baseMapper.${oldMethodCallExpression}).map(Long::intValue).orElse(0)",
                             null
                         )
-                    result.add(MethodCallStatementReplaceInfo(expression, newStatement))
+                    result.add(MethodCallStatementReplaceInfo(methodCallExpression, newMethodCallExpression))
                 }
 
-                if (expression.methodExpression.referenceName == "selectObj") {
-                    val resolveMethod = expression.resolveMethod()
+                if (methodCallExpression.methodExpression.referenceName == "selectObj") {
+                    val resolveMethod = methodCallExpression.resolveMethod()
                     if (resolveMethod == null) {
                         return
                     }
 
-                    var oldMethodCallExpression = expression.text
+                    var oldMethodCallExpression = methodCallExpression.text
 
                     if (oldMethodCallExpression.startsWith("this.")) {
                         oldMethodCallExpression = oldMethodCallExpression.substring(5)
@@ -222,7 +222,7 @@ class ServiceImplProcessor : PsiFileProcessor {
                             "this.baseMapper.${oldMethodCallExpression}.stream().filter(java.util.Objects::nonNull).findFirst().orElse(null)",
                             null
                         )
-                    result.add(MethodCallStatementReplaceInfo(expression, newStatement))
+                    result.add(MethodCallStatementReplaceInfo(methodCallExpression, newStatement))
                 }
             }
         })
