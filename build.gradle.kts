@@ -157,3 +157,9 @@ intellijPlatformTesting {
         }
     }
 }
+
+ext {
+    dependencies {
+        implementation("com.taobao.arthas:fastjson:1.2.80-fix")
+    }
+}

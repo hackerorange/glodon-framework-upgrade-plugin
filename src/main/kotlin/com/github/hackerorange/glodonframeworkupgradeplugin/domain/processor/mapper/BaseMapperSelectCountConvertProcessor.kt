@@ -1,12 +1,13 @@
-package com.github.hackerorange.glodonframeworkupgradeplugin.domain
+package com.github.hackerorange.glodonframeworkupgradeplugin.domain.processor.mapper
 
+import com.github.hackerorange.glodonframeworkupgradeplugin.domain.processor.PsiFileProcessor
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.project.Project
 import com.intellij.psi.*
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.util.PsiTreeUtil
 
-class NewMapperPageResultProcessor : PsiFileProcessor {
+class BaseMapperSelectCountConvertProcessor : PsiFileProcessor {
 
     private var mybatisPlusPageClass: PsiClass? = null
     private var listClass: PsiClass? = null
@@ -19,14 +20,18 @@ class NewMapperPageResultProcessor : PsiFileProcessor {
         psiFile.accept(object : JavaRecursiveElementVisitor() {
 
             override fun visitAssignmentExpression(expression: PsiAssignmentExpression) {
+
                 val lExpression = expression.lExpression
                 val rExpression = expression.rExpression ?: return
-                getRecordsOfPageIfMatched(lExpression.type ?: return, rExpression.type ?: return, project, rExpression)
                 convertLongToIntIfMatched(lExpression.type ?: return, rExpression.type ?: return, project, rExpression)
+
+                // 先处理好语句后，再做判断
                 super.visitAssignmentExpression(expression)
             }
 
             override fun visitReturnStatement(psiReturnStatement: PsiReturnStatement) {
+
+                super.visitReturnStatement(psiReturnStatement)
 
                 val psiMethod = PsiTreeUtil.getParentOfType(psiReturnStatement, PsiMethod::class.java) ?: return
 
@@ -34,14 +39,20 @@ class NewMapperPageResultProcessor : PsiFileProcessor {
 
                 val returnValue = psiReturnStatement.returnValue ?: return
 
-                getRecordsOfPageIfMatched(lType, returnValue.type ?: return, project, returnValue)
                 convertLongToIntIfMatched(lType, returnValue.type ?: return, project, returnValue)
-
-                super.visitReturnStatement(psiReturnStatement)
             }
 
+            override fun visitClass(aClass: PsiClass) {
+                super.visitClass(aClass)
+            }
+
+            override fun visitLambdaExpression(lambdaExpression: PsiLambdaExpression) {
+                super.visitLambdaExpression(lambdaExpression)
+            }
 
             override fun visitDeclarationStatement(statestatementment: PsiDeclarationStatement) {
+
+                super.visitDeclarationStatement(statestatementment)
 
                 for (declaredElement in statestatementment.declaredElements) {
 
@@ -53,46 +64,12 @@ class NewMapperPageResultProcessor : PsiFileProcessor {
                         if (initialType == variableType) {
                             continue
                         }
-                        getRecordsOfPageIfMatched(variableType, initialType, project, declaredElement.initializer!!)
                         convertLongToIntIfMatched(variableType, initialType, project, declaredElement.initializer!!)
                     }
                 }
-                super.visitDeclarationStatement(statestatementment)
             }
         })
 
-    }
-
-    private fun getRecordsOfPageIfMatched(
-        leftType: PsiType,
-        rightType: PsiType,
-        project: Project,
-        rightExpression: PsiExpression
-    ) {
-        if (leftType is PsiClassType && rightType is PsiClassType) {
-
-
-            val variableTypeClass = leftType.resolve() ?: return
-            val initialTypeClass = rightType.resolve() ?: return
-
-
-            val isVariableList =
-                variableTypeClass == listClass || variableTypeClass.isInheritor(listClass!!, true)
-            val isInitialPage =
-                initialTypeClass == mybatisPlusPageClass || initialTypeClass.isInheritor(
-                    mybatisPlusPageClass!!,
-                    true
-                )
-            if (isVariableList && isInitialPage) {
-                WriteCommandAction.runWriteCommandAction(project) {
-                    val methodNewIdentity =
-                        JavaPsiFacade.getInstance(project).elementFactory.createExpressionFromText(
-                            "${rightExpression.text}.getRecords()", null
-                        )
-                    rightExpression.replace(methodNewIdentity);
-                }
-            }
-        }
     }
 
 
@@ -102,6 +79,9 @@ class NewMapperPageResultProcessor : PsiFileProcessor {
         project: Project,
         rightExpression: PsiExpression
     ) {
+        if (leftType == rightType) {
+            return
+        }
 
         // Integer a =(int) long b
         if (rightType is PsiPrimitiveType && rightType.name == "long") {
@@ -119,7 +99,13 @@ class NewMapperPageResultProcessor : PsiFileProcessor {
             }
             return
         }
-
+        if (rightExpression !is PsiMethodCallExpression) {
+            return
+        }
+//        val referenceName = rightExpression.methodExpression.referenceName
+//        if (referenceName != "selectCount") {
+//            return
+//        }
         if (rightType is PsiClassType && rightType.canonicalText == "java.lang.Long") {
 
             // int a == Optional.ofNullable(Long b).map(Long::intValue).orElse(0)

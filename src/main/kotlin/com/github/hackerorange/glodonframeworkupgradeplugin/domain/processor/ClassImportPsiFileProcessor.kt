@@ -1,4 +1,4 @@
-package com.github.hackerorange.glodonframeworkupgradeplugin.domain
+package com.github.hackerorange.glodonframeworkupgradeplugin.domain.processor
 
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.command.WriteCommandAction

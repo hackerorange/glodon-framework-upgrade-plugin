@@ -1,23 +1,30 @@
 package com.github.hackerorange.glodonframeworkupgradeplugin.actions
 
-import com.github.hackerorange.glodonframeworkupgradeplugin.domain.*
+import com.alibaba.fastjson.JSONObject
+import com.alibaba.fastjson.serializer.SerializerFeature
+import com.github.hackerorange.glodonframeworkupgradeplugin.domain.processor.*
+import com.github.hackerorange.glodonframeworkupgradeplugin.domain.processor.mapper.BaseMapperSelectCountConvertProcessor
+import com.github.hackerorange.glodonframeworkupgradeplugin.domain.processor.mapper.BaseMapperSelectPageTypeConvertProcessor
+import com.github.hackerorange.glodonframeworkupgradeplugin.domain.processor.mapper.ReplaceEntityWrapperToQueryWrapperProcessor
+import com.github.hackerorange.glodonframeworkupgradeplugin.domain.processor.service.ServiceImplProcessor
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.application.ApplicationManager
-import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.progress.PerformInBackgroundOption
 import com.intellij.openapi.progress.ProgressIndicator
 import com.intellij.openapi.progress.Task
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.project.guessProjectDir
 import com.intellij.openapi.project.modules
 import com.intellij.openapi.project.rootManager
 import com.intellij.openapi.vfs.VfsUtilCore
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.vfs.VirtualFileFilter
 import com.intellij.psi.PsiJavaFile
-import com.intellij.psi.codeStyle.JavaCodeStyleManager
 import com.intellij.psi.util.PsiUtilBase
+import java.io.File
+import java.io.FileWriter
 
 
 class UpgradeMorrowFramework : AnAction() {
@@ -32,7 +39,9 @@ class UpgradeMorrowFramework : AnAction() {
         processors.add(ReplaceEntityWrapperToQueryWrapperProcessor())
         processors.add(ServiceImplProcessor())
         processors.add(QueryWrapperOrderByProcessor())
-        processors.add(NewMapperPageResultProcessor())
+        processors.add(BaseMapperSelectPageTypeConvertProcessor())
+        processors.add(BaseMapperSelectCountConvertProcessor())
+        processors.add(ShortenPsiJavaClassFileProcessor())
 
         processors.forEach { it.init(project) }
 
@@ -65,22 +74,74 @@ class MorrowFrameworkUpgradeBackgroundTask(project: Project, private val process
         progressIndicator: ProgressIndicator
     ) {
         var current = 0;
-        val total = psiFiles.size * processors.size
+        val total = psiFiles.size * (processors.size)
 
-        for (currentPsiJavaFile in psiFiles) {
-            for (processor in processors) {
+
+
+
+        for (processor in processors) {
+
+
+            var costTimes = ArrayList<ProcessTimeCostInfo>()
+
+
+            for (currentPsiJavaFile in psiFiles) {
+                val startTime = System.currentTimeMillis()
+
                 current++
                 progressIndicator.isIndeterminate = false
                 progressIndicator.fraction = current / (total.toDouble())
-                progressIndicator.text2 = "Upgrading Java File ${currentPsiJavaFile.virtualFile.canonicalPath}"
+                progressIndicator.text2 =
+                    "Upgrading Java File ${currentPsiJavaFile.packageName}.${currentPsiJavaFile.name} by process [${processor::class.java.name}]"
                 progressIndicator.checkCanceled()
                 processor.processPsiFile(project, currentPsiJavaFile)
-            }
 
-            WriteCommandAction.runWriteCommandAction(project) {
-                JavaCodeStyleManager.getInstance(project).shortenClassReferences(currentPsiJavaFile)
+
+                val endTime = System.currentTimeMillis()
+                val costTime = endTime - startTime
+
+                val processTimeCostInfo = ProcessTimeCostInfo()
+                processTimeCostInfo.fileName = "${currentPsiJavaFile.packageName}.${currentPsiJavaFile.name}"
+                processTimeCostInfo.costTime = costTime
+                processTimeCostInfo.processorName = processor::class.java.name
+
+                costTimes.add(processTimeCostInfo)
+
+                project.guessProjectDir()?.let { virtualFile ->
+                    val dir = File(virtualFile.path + "/.idea")
+                    if (dir.exists().not()) {
+                        dir.mkdirs()
+                    }
+                    val file = File(dir, "${processor::class.java.name}.json")
+                    if (file.exists()) {
+                        file.delete()
+                    }
+                    val fileWriter = FileWriter(file)
+
+                    JSONObject.writeJSONString(
+                        fileWriter,
+                        costTimes, SerializerFeature.PrettyFormat
+                    )
+                }
             }
         }
+
+//        for (currentPsiJavaFile in psiFiles) {
+//            current++
+//            progressIndicator.isIndeterminate = false
+//            progressIndicator.fraction = current / (total.toDouble())
+//            progressIndicator.text2 =
+//                "shorten class reference of Java File ${currentPsiJavaFile.packageName}.${currentPsiJavaFile.name}"
+//            WriteCommandAction.runWriteCommandAction(project) {
+//                JavaCodeStyleManager.getInstance(project).shortenClassReferences(currentPsiJavaFile)
+//            }
+//        }
+    }
+
+    class ProcessTimeCostInfo {
+        var fileName: String? = null
+        var costTime: Long? = null
+        var processorName: String? = null
     }
 
     private fun scanAllJavaPsiFileFromModules(modules: Array<Module>): ArrayList<PsiJavaFile> {

@@ -1,5 +1,6 @@
-package com.github.hackerorange.glodonframeworkupgradeplugin.domain
+package com.github.hackerorange.glodonframeworkupgradeplugin.domain.processor.service
 
+import com.github.hackerorange.glodonframeworkupgradeplugin.domain.processor.PsiFileProcessor
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.project.Project
 import com.intellij.psi.*
