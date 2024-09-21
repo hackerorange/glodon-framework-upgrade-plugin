@@ -96,7 +96,7 @@ class MorrowFrameworkUpgradeBackgroundTask(project: Project, private val process
                 progressIndicator.isIndeterminate = false
                 progressIndicator.fraction = current / (total.toDouble())
                 progressIndicator.text2 =
-                    "Upgrading Java File ${currentPsiJavaFile.packageName}.${currentPsiJavaFile.name} by process [${processor::class.java.name}]"
+                    "Upgrading Java File ${currentPsiJavaFile.name} by process [${processor::class.java.name}]"
                 progressIndicator.checkCanceled()
                 try {
                     processor.processPsiFile(project, currentPsiJavaFile)
@@ -121,7 +121,7 @@ class MorrowFrameworkUpgradeBackgroundTask(project: Project, private val process
                 val costTime = endTime - startTime
 
                 val processTimeCostInfo = ProcessTimeCostInfo()
-                processTimeCostInfo.fileName = "${currentPsiJavaFile.packageName}.${currentPsiJavaFile.name}"
+                processTimeCostInfo.fileName = currentPsiJavaFile.name
                 processTimeCostInfo.costTime = costTime
                 processTimeCostInfo.processorName = processor::class.java.name
 
