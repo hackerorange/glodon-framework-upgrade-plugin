@@ -1,7 +1,6 @@
 package com.github.hackerorange.glodonframeworkupgradeplugin.domain.processor.service
 
 import com.github.hackerorange.glodonframeworkupgradeplugin.domain.processor.PsiFileProcessor
-import com.intellij.codeInsight.codeVision.CodeVisionState.NotReady.result
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.project.Project
