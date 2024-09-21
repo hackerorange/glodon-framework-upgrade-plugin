@@ -36,7 +36,7 @@ class ServiceImplProcessor : PsiFileProcessor {
         scene002(psiFile, project)
         scene003(psiFile, project)
         scene004(psiFile, project)
-//        scene005(psiFile, project)
+        scene005(psiFile, project)
 
         changeImportStatement(project, psiFile)
 
@@ -256,38 +256,26 @@ class ServiceImplProcessor : PsiFileProcessor {
 
                         super.visitMethodCallExpression(methodCallExpression)
 
-                        if (methodCallExpression.methodExpression.referenceName == "selectObj") {
-                            val resolveMethod = methodCallExpression.resolveMethod()
-                            if (resolveMethod == null) {
-                                return
-                            }
-                            if (oldServiceImplClass != resolveMethod.containingClass) {
-                                return
-                            }
-
-                            var oldMethodCallExpression = methodCallExpression.text
-
-                            if (oldMethodCallExpression.startsWith("this.")) {
-                                oldMethodCallExpression = oldMethodCallExpression.substring(5)
-                            }
-                            if (oldMethodCallExpression.startsWith("super.")) {
-                                oldMethodCallExpression = oldMethodCallExpression.substring(6)
-                            }
-
-                            oldMethodCallExpression = oldMethodCallExpression.replaceFirst("selectObj", "selectObjs")
-
-                            val newStatement =
-                                JavaPsiFacade.getInstance(project).elementFactory.createExpressionFromText(
-                                    "this.baseMapper.${oldMethodCallExpression}.stream().filter(java.util.Objects::nonNull).findFirst().orElse(null)",
-                                    null
-                                )
-                            methodCallStatementReplaceInfos.add(
-                                MethodCallStatementReplaceInfo(
-                                    methodCallExpression,
-                                    newStatement
-                                )
-                            )
+                        if (methodCallExpression.methodExpression.referenceName != "insertBatch") {
+                            return
                         }
+                        val resolveMethod = methodCallExpression.resolveMethod()
+                            ?: return
+
+                        if (oldServiceImplClass != resolveMethod.containingClass) {
+                            return
+                        }
+
+                        val newStatement = JavaPsiFacade.getInstance(project).elementFactory
+                            .createExpressionFromText(
+                                methodCallExpression.text.replaceFirst("insertBatch", "saveBatch"), null
+                            )
+                        methodCallStatementReplaceInfos.add(
+                            MethodCallStatementReplaceInfo(
+                                methodCallExpression,
+                                newStatement
+                            )
+                        )
                     }
                 })
             }
