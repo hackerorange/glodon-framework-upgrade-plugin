@@ -42,10 +42,10 @@ class UpgradeMorrowFramework : AnAction() {
         processors.add(ClassImportPsiFileProcessor())
         processors.add(ReplaceEntityWrapperToQueryWrapperProcessor())
         processors.add(ServiceImplProcessor())
-//        processors.add(QueryWrapperOrderByProcessor())
-//        processors.add(BaseMapperSelectPageTypeConvertProcessor())
-//        processors.add(BaseMapperSelectCountConvertProcessor())
-//        processors.add(ShortenPsiJavaClassFileProcessor())
+        processors.add(QueryWrapperOrderByProcessor())
+        processors.add(BaseMapperSelectPageTypeConvertProcessor())
+        processors.add(BaseMapperSelectCountConvertProcessor())
+        processors.add(ShortenPsiJavaClassFileProcessor())
 
         processors.forEach { it.init(project) }
 
