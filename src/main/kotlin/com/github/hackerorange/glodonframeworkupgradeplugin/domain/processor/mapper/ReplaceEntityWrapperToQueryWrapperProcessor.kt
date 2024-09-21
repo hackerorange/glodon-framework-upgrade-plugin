@@ -43,6 +43,10 @@ class ReplaceEntityWrapperToQueryWrapperProcessor : PsiFileProcessor {
 
                 if (targetExpressionRealType !is PsiClassType) return
 
+                if (!targetExpressionRealType.className.contains("Wrapper")) {
+                    return
+                }
+
                 val rightType = psiNewExpression.type ?: return
 
                 if (rightType !is PsiClassType) return
@@ -108,45 +112,48 @@ class ReplaceEntityWrapperToQueryWrapperProcessor : PsiFileProcessor {
                         val psiTypeElement = declaredElement.typeElement ?: continue
 
                         val type1 = psiTypeElement.type
-                        if (type1 is PsiClassType) {
+                        if (type1 !is PsiClassType) {
+                            continue
+                        }
+                        if (!type1.className.contains("Wrapper")) {
+                            return
+                        }
+                        type1.isInheritorOf(oldEntityWrapperClass!!.qualifiedName!!)
 
-                            type1.isInheritorOf(oldEntityWrapperClass!!.qualifiedName!!)
+                        if (!type1.isInheritorOf(oldEntityWrapperClass!!.qualifiedName!!))
+                            continue
 
-                            if (!type1.isInheritorOf(oldEntityWrapperClass!!.qualifiedName!!))
-                                continue
+                        val resolveGenerics = type1.resolveGenerics()
+                        val substitutor = resolveGenerics.substitutor
+                        if (substitutor.substitutionMap.values.size != 1) {
 
-                            val resolveGenerics = type1.resolveGenerics()
-                            val substitutor = resolveGenerics.substitutor
-                            if (substitutor.substitutionMap.values.size != 1) {
-
-                                val newType =
-                                    JavaPsiFacade.getInstance(project).elementFactory.createTypeFromText(
-                                        newEntityWrapperClass!!.qualifiedName + "<?>",
-                                        null
-                                    )
-
-                                WriteCommandAction.runWriteCommandAction(project) {
-                                    psiTypeElement.replace(
-                                        JavaPsiFacade.getInstance(project).elementFactory.createTypeElement(
-                                            newType
-                                        )
-                                    )
-                                }
-                            } else {
-                                val entityClassType = ArrayList(substitutor.substitutionMap.values)[0]
-
-                                val newType = JavaPsiFacade.getInstance(project).elementFactory.createTypeFromText(
-                                    newEntityWrapperClass!!.qualifiedName + "<${entityClassType?.canonicalText ?: "?"}>",
+                            val newType =
+                                JavaPsiFacade.getInstance(project).elementFactory.createTypeFromText(
+                                    newEntityWrapperClass!!.qualifiedName + "<?>",
                                     null
                                 )
 
-                                WriteCommandAction.runWriteCommandAction(project) {
-                                    psiTypeElement.replace(
-                                        JavaPsiFacade.getInstance(project).elementFactory.createTypeElement(
-                                            newType
-                                        )
+                            WriteCommandAction.runWriteCommandAction(project) {
+                                psiTypeElement.replace(
+                                    JavaPsiFacade.getInstance(project).elementFactory.createTypeElement(
+                                        newType
                                     )
-                                }
+                                )
+                            }
+                        } else {
+                            val entityClassType = ArrayList(substitutor.substitutionMap.values)[0]
+
+                            val newType = JavaPsiFacade.getInstance(project).elementFactory.createTypeFromText(
+                                newEntityWrapperClass!!.qualifiedName + "<${entityClassType?.canonicalText ?: "?"}>",
+                                null
+                            )
+
+                            WriteCommandAction.runWriteCommandAction(project) {
+                                psiTypeElement.replace(
+                                    JavaPsiFacade.getInstance(project).elementFactory.createTypeElement(
+                                        newType
+                                    )
+                                )
                             }
                         }
                     }

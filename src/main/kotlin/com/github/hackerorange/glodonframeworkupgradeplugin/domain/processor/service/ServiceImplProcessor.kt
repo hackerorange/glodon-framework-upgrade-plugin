@@ -11,8 +11,12 @@ class ServiceImplProcessor : PsiFileProcessor {
     private var oldServiceImplClass: PsiClass? = null
     private var newServiceImplClass: PsiClass? = null
 
+    private var methodCallIdentityRenameProcessors: ArrayList<MethodCallIdentityRenameProcessor> = ArrayList()
+
 
     override fun processPsiFile(project: Project, psiFile: PsiFile) {
+
+
         if (oldServiceImplClass == null || newServiceImplClass == null) {
             return
         }
@@ -21,34 +25,10 @@ class ServiceImplProcessor : PsiFileProcessor {
             for (psiClass in psiFile.classes) {
 
                 if (psiClass.isInheritor(oldServiceImplClass!!, true)) {
-
-                    psiClass.accept(object : JavaRecursiveElementVisitor() {
-
-                        override fun visitMethodCallExpression(expression: PsiMethodCallExpression) {
-
-                            val resolveMethod = expression.resolveMethod()
-
-                            if (resolveMethod != null) {
-                                if (oldServiceImplClass == resolveMethod.containingClass) {
-                                    println(resolveMethod)
-                                    if (expression.methodExpression.referenceName == "insert") {
-                                        renameMethod(project, expression, "save")
-                                    }
-                                    if (expression.methodExpression.referenceName == "delete") {
-                                        renameMethod(project, expression, "remove")
-                                    }
-                                    if (expression.methodExpression.referenceName == "deleteById") {
-                                        renameMethod(project, expression, "removeById")
-                                    }
-                                    useBaseMapperInsteadMethod(expression, project)
-
-
-                                }
-                            }
-
-                            super.visitMethodCallExpression(expression)
-                        }
-                    })
+                    methodCallIdentityRenameProcessors.forEach { methodCallIdentityRenameProcessor ->
+                        methodCallIdentityRenameProcessor.processRename(project, psiClass)
+                    }
+                    extracted(psiClass, project)
                 }
             }
 
@@ -71,97 +51,104 @@ class ServiceImplProcessor : PsiFileProcessor {
                     super.visitImportStatement(statement)
                 }
             })
-
-
         }
-
-
     }
 
-    private fun useBaseMapperInsteadMethod(
-        expression: PsiMethodCallExpression,
-        project: Project
-    ) {
+    private fun extracted(psiClass: PsiClass, project: Project) {
+
         val methodNames = ArrayList<String>()
         methodNames.add("selectList")
         methodNames.add("selectById")
         methodNames.add("selectBatchIds")
 
-        for (methodName in methodNames) {
+        psiClass.accept(object : JavaRecursiveElementVisitor() {
+
+            override fun visitMethodCallExpression(expression: PsiMethodCallExpression) {
+                if (methodNames.contains(expression.methodExpression.referenceName)) {
+                    val resolveMethod = expression.resolveMethod()
+                    if (resolveMethod != null) {
+                        for (methodName in methodNames) {
+                            if (expression.methodExpression.referenceName == methodName) {
+
+                                if (oldServiceImplClass == resolveMethod.containingClass) {
 
 
-            if (expression.methodExpression.referenceName == methodName) {
+                                    val reference = expression.methodExpression.reference
 
-                val reference = expression.methodExpression.reference
+                                    WriteCommandAction.runWriteCommandAction(project) {
+                                        val createReferenceFromText =
+                                            JavaPsiFacade.getInstance(project).elementFactory.createExpressionFromText(
+                                                "this.baseMapper.${methodName}",
+                                                null
+                                            )
+                                        reference?.element?.replace(createReferenceFromText)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                super.visitMethodCallExpression(expression)
+            }
+        })
 
-                WriteCommandAction.runWriteCommandAction(project) {
-                    val createReferenceFromText =
-                        JavaPsiFacade.getInstance(project).elementFactory.createExpressionFromText(
-                            "this.baseMapper.${methodName}",
-                            null
-                        )
-                    reference?.element?.replace(createReferenceFromText)
+        psiClass.accept(object : JavaRecursiveElementVisitor() {
+
+            override fun visitMethodCallExpression(expression: PsiMethodCallExpression) {
+
+                super.visitMethodCallExpression(expression)
+
+                if (expression.methodExpression.referenceName == "selectCount") {
+                    val resolveMethod = expression.resolveMethod()
+                    if (resolveMethod == null) {
+                        return
+                    }
+                    val reference = expression.methodExpression.reference
+
+                    WriteCommandAction.runWriteCommandAction(project) {
+                        val createReferenceFromText =
+                            JavaPsiFacade.getInstance(project).elementFactory.createExpressionFromText(
+                                "this.baseMapper.selectCount",
+                                null
+                            )
+                        reference?.element?.replace(createReferenceFromText)
+
+                        val newStatement =
+                            JavaPsiFacade.getInstance(project).elementFactory.createExpressionFromText(
+                                "java.util.Optional.ofNullable(${expression.text}).map(Long::intValue).orElse(0)",
+                                null
+                            )
+                        expression.replace(newStatement)
+
+                    }
+                }
+
+                if (expression.methodExpression.referenceName == "selectObj") {
+                    val resolveMethod = expression.resolveMethod()
+                    if (resolveMethod == null) {
+                        return
+                    }
+
+                    val reference = expression.methodExpression.reference
+
+                    WriteCommandAction.runWriteCommandAction(project) {
+                        val createReferenceFromText =
+                            JavaPsiFacade.getInstance(project).elementFactory.createExpressionFromText(
+                                "this.baseMapper.selectObjs",
+                                null
+                            )
+                        reference?.element?.replace(createReferenceFromText)
+
+                        val newStatement =
+                            JavaPsiFacade.getInstance(project).elementFactory.createExpressionFromText(
+                                "${expression.text}.stream().filter(java.util.Objects::nonNull).findFirst().orElse(null)",
+                                null
+                            )
+                        expression.replace(newStatement)
+                    }
                 }
             }
-        }
-
-        if (expression.methodExpression.referenceName == "selectCount") {
-
-            val reference = expression.methodExpression.reference
-
-            WriteCommandAction.runWriteCommandAction(project) {
-                val createReferenceFromText =
-                    JavaPsiFacade.getInstance(project).elementFactory.createExpressionFromText(
-                        "this.baseMapper.selectCount",
-                        null
-                    )
-                reference?.element?.replace(createReferenceFromText)
-
-                val newStatement =
-                    JavaPsiFacade.getInstance(project).elementFactory.createExpressionFromText(
-                        "java.util.Optional.ofNullable(${expression.text}).map(Long::intValue).orElse(0)",
-                        null
-                    )
-                expression.replace(newStatement)
-
-            }
-        }
-        if (expression.methodExpression.referenceName == "selectObj") {
-
-            val reference = expression.methodExpression.reference
-
-            WriteCommandAction.runWriteCommandAction(project) {
-                val createReferenceFromText =
-                    JavaPsiFacade.getInstance(project).elementFactory.createExpressionFromText(
-                        "this.baseMapper.selectObjs",
-                        null
-                    )
-                reference?.element?.replace(createReferenceFromText)
-
-                val newStatement =
-                    JavaPsiFacade.getInstance(project).elementFactory.createExpressionFromText(
-                        "${expression.text}.stream().filter(java.util.Objects::nonNull).findFirst().orElse(null)",
-                        null
-                    )
-                expression.replace(newStatement)
-
-            }
-        }
-
-    }
-
-    private fun renameMethod(project: Project, expression: PsiMethodCallExpression, methodNewName: String) {
-        val filter = expression.methodExpression.children.filterIsInstance<PsiIdentifier>()
-        if (filter.size == 1) {
-
-            val psiIdentifier = filter[0]
-
-            WriteCommandAction.runWriteCommandAction(project) {
-                val methodNewIdentity =
-                    JavaPsiFacade.getInstance(project).elementFactory.createIdentifier(methodNewName)
-                psiIdentifier.replace(methodNewIdentity);
-            }
-        }
+        })
     }
 
     override fun init(project: Project) {
@@ -173,6 +160,61 @@ class ServiceImplProcessor : PsiFileProcessor {
             "com.baomidou.mybatisplus.extension.service.impl.ServiceImpl",
             GlobalSearchScope.allScope(project)
         )
+        
+        oldServiceImplClass?.let {
+            methodCallIdentityRenameProcessors.add(
+                MethodCallIdentityRenameProcessor("insert", "save", it)
+            )
+            methodCallIdentityRenameProcessors.add(
+                MethodCallIdentityRenameProcessor("delete", "remove", it)
+            )
+            methodCallIdentityRenameProcessors.add(
+                MethodCallIdentityRenameProcessor("deleteById", "deleteById", it)
+            )
+        }
+
+    }
+
+
+    class MethodCallIdentityRenameProcessor(
+        private val oldName: String,
+        private val newMethodName: String,
+        private var oldServiceImplClass: PsiClass
+    ) {
+
+        fun processRename(project: Project, psiClass: PsiClass) {
+            if (!psiClass.isInheritor(oldServiceImplClass, true)) {
+                return
+            }
+
+            psiClass.accept(object : JavaRecursiveElementVisitor() {
+                override fun visitMethodCallExpression(expression: PsiMethodCallExpression) {
+                    super.visitMethodCallExpression(expression)
+                    if (expression.methodExpression.referenceName != oldName) {
+                        return
+                    }
+                    val resolveMethod = expression.resolveMethod()
+
+                    if (resolveMethod != null) {
+                        if (oldServiceImplClass == resolveMethod.containingClass) {
+                            println(resolveMethod)
+                            val filter = expression.methodExpression.children.filterIsInstance<PsiIdentifier>()
+                            if (filter.size == 1) {
+
+                                val psiIdentifier = filter[0]
+
+                                WriteCommandAction.runWriteCommandAction(project) {
+                                    val methodNewIdentity =
+                                        JavaPsiFacade.getInstance(project).elementFactory.createIdentifier(newMethodName)
+                                    psiIdentifier.replace(methodNewIdentity);
+                                }
+                            }
+                        }
+                    }
+
+                }
+            })
+        }
     }
 
 }
