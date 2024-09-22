@@ -109,11 +109,13 @@ class MoveAndStatementToLambdaExpression : AbstractBaseJavaLocalInspectionTool()
                     )
                 )
 
-                val expressionInLambda = selectText.replace(subText, "").removePrefix("\n").removePrefix(" ")
+                val expressionInLambda = selectText.replace(subText, "")
+//                    .removePrefix("\n")
+//                    .removePrefix(" ")
 
                 replacedExpression.argumentList.add(
                     JavaPsiFacade.getInstance(project).elementFactory.createExpressionFromText(
-                        "qw->{qw${expressionInLambda};}",
+                        "qw->qw${expressionInLambda}",
                         null
                     )
                 )
