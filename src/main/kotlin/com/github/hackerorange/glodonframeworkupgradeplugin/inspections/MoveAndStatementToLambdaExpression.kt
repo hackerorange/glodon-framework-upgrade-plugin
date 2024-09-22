@@ -5,6 +5,8 @@ import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.project.Project
 import com.intellij.psi.*
+import com.intellij.psi.search.GlobalSearchScope
+import com.intellij.psi.util.InheritanceUtil
 import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.refactoring.introduceVariable.IntroduceVariableBase
 import com.intellij.refactoring.util.CommonRefactoringUtil
@@ -16,6 +18,11 @@ class MoveAndStatementToLambdaExpression : AbstractBaseJavaLocalInspectionTool()
     override fun buildVisitor(problemsHolder: ProblemsHolder, isOnTheFly: Boolean): PsiElementVisitor {
 
         val project = problemsHolder.project
+
+        val queryWrapperClass = JavaPsiFacade.getInstance(project).findClass(
+            "com.baomidou.mybatisplus.core.conditions.query.QueryWrapper",
+            GlobalSearchScope.allScope(project)
+        )
 
         return object : JavaElementVisitor() {
             override fun visitMethodCallExpression(methodCallExpression: PsiMethodCallExpression) {
@@ -40,7 +47,7 @@ class MoveAndStatementToLambdaExpression : AbstractBaseJavaLocalInspectionTool()
                     ?: return
 
                 val isQueryWrapper =
-                    reference.type?.isInheritorOf(QUERY_WRAPPER_QNAME)
+                    reference.type?.let { InheritanceUtil.isInheritor(it, QUERY_WRAPPER_QNAME) }
 
                 if (isQueryWrapper != true) {
                     return

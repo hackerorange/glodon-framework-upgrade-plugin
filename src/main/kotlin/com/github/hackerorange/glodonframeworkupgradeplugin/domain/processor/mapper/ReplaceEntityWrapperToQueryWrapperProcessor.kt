@@ -1,12 +1,12 @@
 package com.github.hackerorange.glodonframeworkupgradeplugin.domain.processor.mapper
 
 import com.github.hackerorange.glodonframeworkupgradeplugin.domain.processor.PsiFileProcessor
-import com.intellij.codeInspection.isInheritorOf
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.project.Project
 import com.intellij.psi.*
 import com.intellij.psi.search.GlobalSearchScope
+import com.intellij.psi.util.InheritanceUtil
 
 class ReplaceEntityWrapperToQueryWrapperProcessor : PsiFileProcessor {
 
@@ -61,7 +61,7 @@ class ReplaceEntityWrapperToQueryWrapperProcessor : PsiFileProcessor {
 
                     if (rightType !is PsiClassType) return
 
-                    if (!rightType.isInheritorOf(oldEntityWrapperClass!!.qualifiedName!!)) {
+                    if (!InheritanceUtil.isInheritor(rightType, oldEntityWrapperClass!!.qualifiedName!!)) {
                         return
                     }
 
@@ -136,9 +136,8 @@ class ReplaceEntityWrapperToQueryWrapperProcessor : PsiFileProcessor {
                             if (!type1.className.contains("Wrapper")) {
                                 return
                             }
-                            type1.isInheritorOf(oldEntityWrapperClass!!.qualifiedName!!)
 
-                            if (!type1.isInheritorOf(oldEntityWrapperClass!!.qualifiedName!!))
+                            if (!InheritanceUtil.isInheritor(type1, oldEntityWrapperClass!!.qualifiedName!!))
                                 continue
 
                             val resolveGenerics = type1.resolveGenerics()
