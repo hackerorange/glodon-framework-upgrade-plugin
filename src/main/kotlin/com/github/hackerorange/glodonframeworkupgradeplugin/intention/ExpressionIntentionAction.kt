@@ -5,10 +5,7 @@ import com.intellij.codeInspection.util.IntentionFamilyName
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.project.Project
-import com.intellij.psi.FileViewProvider
-import com.intellij.psi.JavaPsiFacade
-import com.intellij.psi.PsiElement
-import com.intellij.psi.PsiMethodCallExpression
+import com.intellij.psi.*
 import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.util.IncorrectOperationException
 
@@ -100,6 +97,10 @@ class ExpressionIntentionAction : PsiElementBaseIntentionAction() {
 
         replacedExpression.methodExpression.referenceNameElement?.replace(createIdentifier)
 
+
+        val oldArgumentList = replacedExpression.argumentList.copy() as PsiExpressionList
+
+        replacedExpression.argumentList.expressions.forEach { it.delete() }
         replacedExpression.argumentList.add(
             JavaPsiFacade.getInstance(project).elementFactory.createExpressionFromText(
                 "true",
@@ -107,7 +108,12 @@ class ExpressionIntentionAction : PsiElementBaseIntentionAction() {
             )
         )
 
-        val expressionInLambda = selectText.replace(subText, "")
+        var expressionInLambda = selectText.replace(subText, "")
+
+        if (oldArgumentList.isEmpty.not()) {
+            expressionInLambda = ".apply${oldArgumentList.text}$expressionInLambda"
+        }
+
 
         replacedExpression.argumentList.add(
             JavaPsiFacade.getInstance(project).elementFactory.createExpressionFromText(

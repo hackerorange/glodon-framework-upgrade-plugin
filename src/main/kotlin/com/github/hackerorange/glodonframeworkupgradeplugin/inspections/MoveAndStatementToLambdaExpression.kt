@@ -1,38 +1,126 @@
 package com.github.hackerorange.glodonframeworkupgradeplugin.inspections
 
-import com.intellij.codeInspection.AbstractBaseJavaLocalInspectionTool
-import com.intellij.codeInspection.LocalQuickFixAndIntentionActionOnPsiElement
-import com.intellij.codeInspection.ProblemsHolder
+import com.intellij.codeInspection.*
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.project.Project
 import com.intellij.psi.*
+import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.refactoring.introduceVariable.IntroduceVariableBase
 import com.intellij.refactoring.util.CommonRefactoringUtil
+
+private const val QUERY_WRAPPER_QNAME = "com.baomidou.mybatisplus.core.conditions.query.QueryWrapper"
 
 class MoveAndStatementToLambdaExpression : AbstractBaseJavaLocalInspectionTool() {
 
     override fun buildVisitor(problemsHolder: ProblemsHolder, isOnTheFly: Boolean): PsiElementVisitor {
 
-        return object : JavaRecursiveElementVisitor() {
+        val project = problemsHolder.project
+
+        return object : JavaElementVisitor() {
             override fun visitMethodCallExpression(methodCallExpression: PsiMethodCallExpression) {
+
+
+                processAndNew(methodCallExpression)
+
+
+                super.visitMethodCallExpression(methodCallExpression)
+            }
+
+            private fun processAndNew(
+                methodCallExpression: PsiMethodCallExpression
+            ) {
                 val methodExpression = methodCallExpression.methodExpression
 
-                if ("andNew" == methodExpression.referenceName) {
+                if ("andNew" != methodExpression.referenceName) {
+                    return
+                }
 
-                    val psiIdentifier =
-                        methodExpression.children.filterIsInstance<PsiIdentifier>().firstOrNull() ?: return
+                val reference = methodExpression.qualifierExpression
+                    ?: return
 
+                val isQueryWrapper =
+                    reference.type?.isInheritorOf(QUERY_WRAPPER_QNAME)
+
+                if (isQueryWrapper != true) {
+                    return
+                }
+
+                val psiIdentifier = methodExpression.referenceNameElement
+                    ?: return
+
+                if (!methodCallExpression.argumentList.isEmpty) {
                     problemsHolder.registerProblem(
                         psiIdentifier,
                         "Wrap lambda expression ",
+                        ProblemHighlightType.ERROR,
+                        IntroduceVariableErrorFixAction1(),
+                        IntroduceVariableErrorFixAction(methodCallExpression)
+                    )
+                } else {
+                    problemsHolder.registerProblem(
+                        psiIdentifier,
+                        "Wrap lambda expression ",
+                        ProblemHighlightType.ERROR,
                         IntroduceVariableErrorFixAction(methodCallExpression)
                     )
                 }
 
 
-                super.visitMethodCallExpression(methodCallExpression)
+
+                return
             }
+        }
+    }
+
+    class IntroduceVariableErrorFixAction1 :
+        LocalQuickFix {
+
+
+        override fun startInWriteAction(): Boolean {
+            return false
+        }
+
+        override fun getFamilyName(): String {
+            return "[Upgrade MyBatis Plus] 将当前语句，作为Lambda表达式，添加到 and 语句中"
+        }
+
+        override fun applyFix(project: Project, descriptor: ProblemDescriptor) {
+
+            val psiElement = descriptor.psiElement
+
+            val psiMethodCallExpression =
+                PsiTreeUtil.getParentOfType(psiElement, PsiMethodCallExpression::class.java) ?: return
+
+            val replacedExpression = psiMethodCallExpression.copy() as PsiMethodCallExpression
+
+            println(replacedExpression.methodExpression.referenceNameElement)
+
+            val createIdentifier = JavaPsiFacade.getInstance(project).elementFactory.createIdentifier("and")
+
+            replacedExpression.methodExpression.referenceNameElement?.replace(createIdentifier)
+
+            val expressionInLambda = replacedExpression.argumentList.text
+
+            replacedExpression.argumentList.expressions.forEach { it.delete() }
+
+            replacedExpression.argumentList.add(
+                JavaPsiFacade.getInstance(project).elementFactory.createExpressionFromText(
+                    "true",
+                    null
+                )
+            )
+
+            replacedExpression.argumentList.add(
+                JavaPsiFacade.getInstance(project).elementFactory.createExpressionFromText(
+                    "qw->qw.apply${expressionInLambda}",
+                    null
+                )
+            )
+            WriteCommandAction.runWriteCommandAction(project) {
+                psiMethodCallExpression.replace(replacedExpression)
+            }
+
         }
     }
 
@@ -70,7 +158,7 @@ class MoveAndStatementToLambdaExpression : AbstractBaseJavaLocalInspectionTool()
 
         override fun getText(): String {
 
-            return "测试折叠代码"
+            return "[Upgrade MyBatis Plus] 选择此条语句以及后面的语句，作为Lambda表达式，添加到 and 语句中"
         }
 
         override fun getFamilyName(): String {
@@ -118,6 +206,10 @@ class MoveAndStatementToLambdaExpression : AbstractBaseJavaLocalInspectionTool()
 
             replacedExpression.methodExpression.referenceNameElement?.replace(createIdentifier)
 
+
+            val oldArgumentList = replacedExpression.argumentList.copy() as PsiExpressionList
+
+            replacedExpression.argumentList.expressions.forEach { it.delete() }
             replacedExpression.argumentList.add(
                 JavaPsiFacade.getInstance(project).elementFactory.createExpressionFromText(
                     "true",
@@ -125,7 +217,12 @@ class MoveAndStatementToLambdaExpression : AbstractBaseJavaLocalInspectionTool()
                 )
             )
 
-            val expressionInLambda = selectText.replace(subText, "")
+            var expressionInLambda = selectText.replace(subText, "")
+
+            if (oldArgumentList.isEmpty.not()) {
+                expressionInLambda = ".apply${oldArgumentList.text}$expressionInLambda"
+            }
+
 
             replacedExpression.argumentList.add(
                 JavaPsiFacade.getInstance(project).elementFactory.createExpressionFromText(

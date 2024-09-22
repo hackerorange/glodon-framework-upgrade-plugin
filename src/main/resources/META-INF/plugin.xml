@@ -11,7 +11,7 @@
     <!--必须为企业版-->
     <depends>com.intellij.modules.lang</depends>
 
-    <depends>com.intellij.modules.vcs</depends>
+<!--    <depends>com.intellij.modules.vcs</depends>-->
 
     <depends>Git4Idea</depends>
 
