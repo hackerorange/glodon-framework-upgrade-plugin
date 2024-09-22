@@ -86,15 +86,14 @@ class MoveAndStatementToLambdaExpression : AbstractBaseJavaLocalInspectionTool()
         override fun invokeImpl(project: Project, psiExpression: PsiExpression, editor: Editor?): Boolean {
             val selectText = psiExpression.text ?: return true
 
-            val subText = psiMethodCallExpression.text
+            val subText: String = psiMethodCallExpression.text
 
             if (psiMethodCallExpression == psiExpression) {
                 return true
             }
 
             if (selectText.contains(subText)) {
-                val aaa = selectText.replace(subText, "")
-                println(aaa)
+
 
                 val replacedExpression = psiMethodCallExpression.copy() as PsiMethodCallExpression
 
@@ -110,9 +109,11 @@ class MoveAndStatementToLambdaExpression : AbstractBaseJavaLocalInspectionTool()
                     )
                 )
 
+                val expressionInLambda = selectText.replace(subText, "").removePrefix("\n").removePrefix(" ")
+
                 replacedExpression.argumentList.add(
                     JavaPsiFacade.getInstance(project).elementFactory.createExpressionFromText(
-                        "qw->{qw${aaa};}",
+                        "qw->{qw${expressionInLambda};}",
                         null
                     )
                 )
