@@ -28,7 +28,6 @@ intellij {
     pluginName.set(providers.gradleProperty("pluginName"))
     version.set(providers.gradleProperty("platformVersion"))
     type.set(providers.gradleProperty("platformType"))
-    sandboxDir.set("${rootProject.rootDir}/idea-sandbox")
 
     // Plugin Dependencies. Uses `platformPlugins` property from the gradle.properties file.
     plugins.set(
