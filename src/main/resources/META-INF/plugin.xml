@@ -36,6 +36,12 @@
                          displayName="[Upgrade MyBatis Plus] 将 add 方法移动到 lambda 表达式中"
                          groupName="MyBatis Plus 升级"/>
 
+        <intentionAction>
+            <language>JAVA</language>
+            <className>com.github.hackerorange.glodonframeworkupgradeplugin.intention.ExpressionIntentionAction
+            </className>
+            <descriptionDirectoryName>[SOHO] 将这些条件添加到 add 语句中</descriptionDirectoryName>
+        </intentionAction>
     </extensions>
 
     <!--    <extensionPoints>-->

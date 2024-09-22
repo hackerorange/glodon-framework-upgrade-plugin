@@ -84,54 +84,59 @@ class MoveAndStatementToLambdaExpression : AbstractBaseJavaLocalInspectionTool()
         }
 
         override fun invokeImpl(project: Project, psiExpression: PsiExpression, editor: Editor?): Boolean {
-            val selectText = psiExpression.text ?: return true
 
-            val subText: String = psiMethodCallExpression.text
-
-            if (psiMethodCallExpression == psiExpression) {
+            if (psiExpression !is PsiMethodCallExpression) {
                 return true
             }
 
-            if (selectText.contains(subText)) {
-
-
-                val replacedExpression = psiMethodCallExpression.copy() as PsiMethodCallExpression
-
-                println(replacedExpression.methodExpression.referenceNameElement)
-
-                val createIdentifier = JavaPsiFacade.getInstance(project).elementFactory.createIdentifier("and")
-                replacedExpression.methodExpression.referenceNameElement?.replace(createIdentifier)
-
-                replacedExpression.argumentList.add(
-                    JavaPsiFacade.getInstance(project).elementFactory.createExpressionFromText(
-                        "true",
-                        null
-                    )
-                )
-
-                val expressionInLambda = selectText.replace(subText, "")
-//                    .removePrefix("\n")
-//                    .removePrefix(" ")
-
-                replacedExpression.argumentList.add(
-                    JavaPsiFacade.getInstance(project).elementFactory.createExpressionFromText(
-                        "qw->qw${expressionInLambda}",
-                        null
-                    )
-                )
-
-                WriteCommandAction.runWriteCommandAction(project) {
-                    psiExpression.replace(replacedExpression)
-                }
-
-
-            }
-
-
-
-
+            extracted(project, psiExpression, psiMethodCallExpression)
 
             return true
+        }
+
+        private fun extracted(
+            project: Project,
+            longPsiMethodCallExpression: PsiMethodCallExpression,
+            shortPsiMethodCallExpression: PsiMethodCallExpression
+        ) {
+
+            val selectText = longPsiMethodCallExpression.text
+                ?: return
+            val subText: String = shortPsiMethodCallExpression.text
+
+            if (shortPsiMethodCallExpression == longPsiMethodCallExpression) {
+                return
+            }
+            if (!selectText.contains(subText)) {
+                return
+            }
+            val replacedExpression = shortPsiMethodCallExpression.copy() as PsiMethodCallExpression
+
+            println(replacedExpression.methodExpression.referenceNameElement)
+
+            val createIdentifier = JavaPsiFacade.getInstance(project).elementFactory.createIdentifier("and")
+
+            replacedExpression.methodExpression.referenceNameElement?.replace(createIdentifier)
+
+            replacedExpression.argumentList.add(
+                JavaPsiFacade.getInstance(project).elementFactory.createExpressionFromText(
+                    "true",
+                    null
+                )
+            )
+
+            val expressionInLambda = selectText.replace(subText, "")
+
+            replacedExpression.argumentList.add(
+                JavaPsiFacade.getInstance(project).elementFactory.createExpressionFromText(
+                    "qw->qw${expressionInLambda}",
+                    null
+                )
+            )
+
+            WriteCommandAction.runWriteCommandAction(project) {
+                longPsiMethodCallExpression.replace(replacedExpression)
+            }
         }
 
     }
