@@ -155,7 +155,7 @@ tasks {
         implementation("org.commonmark:commonmark:0.22.0")
         implementation("org.commonmark:commonmark-ext-gfm-tables:0.22.0")
 
-        implementation("org.springframework:spring-core:6.1.10")
+        implementation("org.springframework:spring-core:6.1.13")
         // https://mvnrepository.com/artifact/org.apache.commons/commons-text
         implementation("org.apache.commons:commons-text:1.10.0")
 
