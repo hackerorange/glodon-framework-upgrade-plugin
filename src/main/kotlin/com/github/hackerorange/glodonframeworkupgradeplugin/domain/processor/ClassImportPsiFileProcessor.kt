@@ -46,6 +46,8 @@ class ClassImportPsiFileProcessor : PsiFileProcessor {
         temp["com.baomidou.mybatisplus.annotations.TableName"] = "com.baomidou.mybatisplus.annotation.TableName"
         temp["com.baomidou.mybatisplus.annotations.TableField"] = "com.baomidou.mybatisplus.annotation.TableField"
         temp["com.baomidou.mybatisplus.annotations.TableId"] = "com.baomidou.mybatisplus.annotation.TableId"
+        temp["com.baomidou.mybatisplus.annotations.Version"] = "com.baomidou.mybatisplus.annotation.Version"
+        temp["com.baomidou.mybatisplus.enums.FieldFill"] = "com.baomidou.mybatisplus.annotation.FieldFill"
 
         for (mutableEntry in temp) {
             val newBaseMapperClass = JavaPsiFacade.getInstance(project).findClass(
