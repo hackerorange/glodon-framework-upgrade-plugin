@@ -7,6 +7,7 @@ import com.intellij.openapi.project.Project
 import com.intellij.psi.*
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.util.InheritanceUtil
+import com.intellij.psi.util.PsiTreeUtil
 
 private const val PAGE_QNAME = "com.baomidou.mybatisplus.core.metadata.IPage"
 
@@ -117,6 +118,33 @@ class BaseMapperSelectPageTypeConvertProcessor : PsiFileProcessor {
                                     createExpressionFromText
                                 )
                             )
+                        }
+                    }
+
+                    if ("getCurrent" == referenceName || "getTotal" == referenceName) {
+                        val qualifierExpression = psiMethodCallExpression.methodExpression.qualifierExpression ?: return
+                        val isPage =
+                            qualifierExpression.type?.let { InheritanceUtil.isInheritor(it, PAGE_QNAME) } ?: false
+
+                        if (isPage) {
+
+                            val parentOfType =
+                                PsiTreeUtil.getParentOfType(psiMethodCallExpression, PsiTypeCastExpression::class.java)
+
+                            if (parentOfType == null) {
+                                val createExpressionFromText =
+                                    JavaPsiFacade.getInstance(project).elementFactory.createExpressionFromText(
+                                        "(int) (${qualifierExpression.text})",
+                                        null
+                                    )
+
+                                methodCallStatementReplaceInfos.add(
+                                    MethodCallStatementReplaceInfo(
+                                        qualifierExpression,
+                                        createExpressionFromText
+                                    )
+                                )
+                            }
                         }
                     }
 
