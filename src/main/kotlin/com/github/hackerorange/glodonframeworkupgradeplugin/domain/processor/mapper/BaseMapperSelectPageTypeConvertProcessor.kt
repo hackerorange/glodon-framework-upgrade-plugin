@@ -121,7 +121,7 @@ class BaseMapperSelectPageTypeConvertProcessor : PsiFileProcessor {
                         }
                     }
 
-                    if ("getCurrent" == referenceName || "getTotal" == referenceName) {
+                    if ("getCurrent" == referenceName || "getTotal" == referenceName || "getSize" == referenceName) {
                         val qualifierExpression = psiMethodCallExpression.methodExpression.qualifierExpression ?: return
                         val isPage =
                             qualifierExpression.type?.let { InheritanceUtil.isInheritor(it, PAGE_QNAME) } ?: false
@@ -134,13 +134,13 @@ class BaseMapperSelectPageTypeConvertProcessor : PsiFileProcessor {
                             if (parentOfType == null) {
                                 val createExpressionFromText =
                                     JavaPsiFacade.getInstance(project).elementFactory.createExpressionFromText(
-                                        "(int) (${qualifierExpression.text})",
+                                        "(int) (${psiMethodCallExpression.text})",
                                         null
                                     )
 
                                 methodCallStatementReplaceInfos.add(
                                     MethodCallStatementReplaceInfo(
-                                        qualifierExpression,
+                                        psiMethodCallExpression,
                                         createExpressionFromText
                                     )
                                 )
