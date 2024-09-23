@@ -29,6 +29,7 @@ class MoveAndStatementToLambdaExpression : AbstractBaseJavaLocalInspectionTool()
 
 
                 processAndNew(methodCallExpression)
+                processOrMethodCall(methodCallExpression)
 
 
                 super.visitMethodCallExpression(methodCallExpression)
@@ -77,6 +78,51 @@ class MoveAndStatementToLambdaExpression : AbstractBaseJavaLocalInspectionTool()
 
                 return
             }
+
+
+            private fun processOrMethodCall(methodCallExpression: PsiMethodCallExpression) {
+                val methodExpression = methodCallExpression.methodExpression
+
+                if ("or" != methodExpression.referenceName) {
+                    return
+                }
+
+                val reference = methodExpression.qualifierExpression
+                    ?: return
+
+                var isQueryWrapper = false;
+                if (reference.type != null) {
+                    isQueryWrapper = InheritanceUtil.isInheritor(reference.type, QUERY_WRAPPER_QNAME)
+                }
+                if (isQueryWrapper != true) {
+                    return
+                }
+                val resolveMethod = methodCallExpression.resolveMethod()
+
+                if (resolveMethod == null) {
+                    val psiIdentifier = methodExpression.referenceNameElement
+                        ?: return
+
+                    if (!methodCallExpression.argumentList.isEmpty) {
+                        problemsHolder.registerProblem(
+                            psiIdentifier,
+                            "Wrap lambda expression ",
+                            ProblemHighlightType.ERROR,
+                            IntroduceVariableErrorFixAction2(),
+                            IntroduceVariableErrorFixAction(methodCallExpression)
+                        )
+                    }
+
+                }
+
+
+
+
+
+
+                return
+            }
+
         }
     }
 
@@ -104,6 +150,65 @@ class MoveAndStatementToLambdaExpression : AbstractBaseJavaLocalInspectionTool()
             println(replacedExpression.methodExpression.referenceNameElement)
 
             val createIdentifier = JavaPsiFacade.getInstance(project).elementFactory.createIdentifier("and")
+
+            replacedExpression.methodExpression.referenceNameElement?.replace(createIdentifier)
+
+            var conditionExpression = JavaPsiFacade
+                .getInstance(project)
+                .elementFactory
+                .createExpressionFromText("true", null)
+
+            if (replacedExpression.argumentList.isEmpty.not()) {
+                val psiExpression: PsiExpression = replacedExpression.argumentList.expressions[0]
+                if (isBooleanType(psiExpression.type)) {
+                    conditionExpression = psiExpression.copy() as PsiExpression
+                    psiExpression.delete()
+                }
+            }
+
+            val expressionInLambda = replacedExpression.argumentList.text
+
+            replacedExpression.argumentList.expressions.forEach { it.delete() }
+
+            replacedExpression.argumentList.add(conditionExpression)
+
+            replacedExpression.argumentList.add(
+                JavaPsiFacade.getInstance(project).elementFactory.createExpressionFromText(
+                    "qw->qw.apply${expressionInLambda}",
+                    null
+                )
+            )
+            WriteCommandAction.runWriteCommandAction(project) {
+                psiMethodCallExpression.replace(replacedExpression)
+            }
+
+        }
+    }
+
+    class IntroduceVariableErrorFixAction2 :
+        LocalQuickFix {
+
+
+        override fun startInWriteAction(): Boolean {
+            return false
+        }
+
+        override fun getFamilyName(): String {
+            return "[Upgrade MyBatis Plus] 将当前语句，作为Lambda表达式，添加到 or 语句中"
+        }
+
+        override fun applyFix(project: Project, descriptor: ProblemDescriptor) {
+
+            val psiElement = descriptor.psiElement
+
+            val psiMethodCallExpression =
+                PsiTreeUtil.getParentOfType(psiElement, PsiMethodCallExpression::class.java) ?: return
+
+            val replacedExpression = psiMethodCallExpression.copy() as PsiMethodCallExpression
+
+            println(replacedExpression.methodExpression.referenceNameElement)
+
+            val createIdentifier = JavaPsiFacade.getInstance(project).elementFactory.createIdentifier("or")
 
             replacedExpression.methodExpression.referenceNameElement?.replace(createIdentifier)
 
