@@ -97,28 +97,27 @@ class MoveAndStatementToLambdaExpression : AbstractBaseJavaLocalInspectionTool()
                 if (isQueryWrapper != true) {
                     return
                 }
-                val resolveMethod = methodCallExpression.resolveMethod()
+                val argumentList = methodCallExpression.argumentList
 
-                if (resolveMethod == null) {
-                    val psiIdentifier = methodExpression.referenceNameElement
-                        ?: return
-
-                    if (!methodCallExpression.argumentList.isEmpty) {
-                        problemsHolder.registerProblem(
-                            psiIdentifier,
-                            "Wrap lambda expression ",
-                            ProblemHighlightType.ERROR,
-                            IntroduceVariableErrorFixAction2(),
-                            IntroduceVariableErrorFixAction(methodCallExpression)
-                        )
-                    }
-
+                if (argumentList.isEmpty) {
+                    return
                 }
 
+                if (argumentList.expressions.any { it is PsiLambdaExpression }) {
+                    return
+                }
 
+                val psiIdentifier = methodExpression.referenceNameElement
+                    ?: return
 
-
-
+                if (!methodCallExpression.argumentList.isEmpty) {
+                    problemsHolder.registerProblem(
+                        psiIdentifier,
+                        "Wrap lambda expression ",
+                        ProblemHighlightType.ERROR,
+                        IntroduceVariableErrorFixAction2(),
+                    )
+                }
 
                 return
             }
