@@ -265,7 +265,7 @@ class MoveAndStatementToLambdaExpression : AbstractBaseJavaLocalInspectionTool()
 
     companion object {
         private fun isBooleanType(type: PsiType?): Boolean {
-            if (type is PsiPrimitiveType && type.name == "bool") {
+            if (type is PsiPrimitiveType && type.name == "boolean") {
                 return true
             }
             if (type is PsiClassType && type.className == "Boolean") {

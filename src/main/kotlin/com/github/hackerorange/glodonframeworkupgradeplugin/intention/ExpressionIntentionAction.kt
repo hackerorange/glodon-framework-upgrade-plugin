@@ -111,6 +111,7 @@ class ExpressionIntentionAction : PsiElementBaseIntentionAction() {
             val psiExpression: PsiExpression = oldArgumentList.expressions[0]
             if (isBooleanType(psiExpression.type)) {
                 conditionExpression = psiExpression.copy() as PsiExpression
+                psiExpression.delete()
             }
         }
 
@@ -147,7 +148,7 @@ class ExpressionIntentionAction : PsiElementBaseIntentionAction() {
 
 
     private fun isBooleanType(type: PsiType?): Boolean {
-        if (type is PsiPrimitiveType && type.name == "bool") {
+        if (type is PsiPrimitiveType && type.name == "boolean") {
             return true
         }
         if (type is PsiClassType && type.className == "Boolean") {
