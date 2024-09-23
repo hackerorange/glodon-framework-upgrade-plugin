@@ -101,12 +101,21 @@ class ExpressionIntentionAction : PsiElementBaseIntentionAction() {
         val oldArgumentList = replacedExpression.argumentList.copy() as PsiExpressionList
 
         replacedExpression.argumentList.expressions.forEach { it.delete() }
-        replacedExpression.argumentList.add(
-            JavaPsiFacade.getInstance(project).elementFactory.createExpressionFromText(
-                "true",
-                null
-            )
-        )
+
+        var conditionExpression = JavaPsiFacade
+            .getInstance(project)
+            .elementFactory
+            .createExpressionFromText("true", null)
+
+        if (oldArgumentList.isEmpty.not()) {
+            val psiExpression: PsiExpression = oldArgumentList.expressions[0]
+            if (isBooleanType(psiExpression.type)) {
+                conditionExpression = psiExpression.copy() as PsiExpression
+            }
+        }
+
+        replacedExpression.argumentList.expressions.forEach { it.delete() }
+        replacedExpression.argumentList.add(conditionExpression)
 
         var expressionInLambda = selectText.replace(subText, "")
 
@@ -135,4 +144,17 @@ class ExpressionIntentionAction : PsiElementBaseIntentionAction() {
     override fun getText(): String {
         return familyName
     }
+
+
+    private fun isBooleanType(type: PsiType?): Boolean {
+        if (type is PsiPrimitiveType && type.name == "bool") {
+            return true
+        }
+        if (type is PsiClassType && type.className == "Boolean") {
+            return true
+        }
+        return false
+    }
+
+
 }

@@ -107,16 +107,24 @@ class MoveAndStatementToLambdaExpression : AbstractBaseJavaLocalInspectionTool()
 
             replacedExpression.methodExpression.referenceNameElement?.replace(createIdentifier)
 
+            var conditionExpression = JavaPsiFacade
+                .getInstance(project)
+                .elementFactory
+                .createExpressionFromText("true", null)
+
+            if (replacedExpression.argumentList.isEmpty.not()) {
+                val psiExpression: PsiExpression = replacedExpression.argumentList.expressions[0]
+                if (isBooleanType(psiExpression.type)) {
+                    conditionExpression = psiExpression.copy() as PsiExpression
+                    psiExpression.delete()
+                }
+            }
+
             val expressionInLambda = replacedExpression.argumentList.text
 
             replacedExpression.argumentList.expressions.forEach { it.delete() }
 
-            replacedExpression.argumentList.add(
-                JavaPsiFacade.getInstance(project).elementFactory.createExpressionFromText(
-                    "true",
-                    null
-                )
-            )
+            replacedExpression.argumentList.add(conditionExpression)
 
             replacedExpression.argumentList.add(
                 JavaPsiFacade.getInstance(project).elementFactory.createExpressionFromText(
@@ -216,13 +224,22 @@ class MoveAndStatementToLambdaExpression : AbstractBaseJavaLocalInspectionTool()
 
             val oldArgumentList = replacedExpression.argumentList.copy() as PsiExpressionList
 
+            var conditionExpression = JavaPsiFacade
+                .getInstance(project)
+                .elementFactory
+                .createExpressionFromText("true", null)
+
+            if (oldArgumentList.isEmpty.not()) {
+                val psiExpression: PsiExpression = oldArgumentList.expressions[0]
+                if (Companion.isBooleanType(psiExpression.type)) {
+                    conditionExpression = psiExpression.copy() as PsiExpression
+                    psiExpression.delete()
+                }
+
+            }
+
             replacedExpression.argumentList.expressions.forEach { it.delete() }
-            replacedExpression.argumentList.add(
-                JavaPsiFacade.getInstance(project).elementFactory.createExpressionFromText(
-                    "true",
-                    null
-                )
-            )
+            replacedExpression.argumentList.add(conditionExpression)
 
             var expressionInLambda = selectText.replace(subText, "")
 
@@ -243,7 +260,19 @@ class MoveAndStatementToLambdaExpression : AbstractBaseJavaLocalInspectionTool()
             }
         }
 
+
     }
 
+    companion object {
+        private fun isBooleanType(type: PsiType?): Boolean {
+            if (type is PsiPrimitiveType && type.name == "bool") {
+                return true
+            }
+            if (type is PsiClassType && type.className == "Boolean") {
+                return true
+            }
+            return false
+        }
+    }
 
 }
