@@ -150,7 +150,7 @@ tasks {
         implementation("io.smallrye:smallrye-open-api-core:3.10.0")
 
         // https://mvnrepository.com/artifact/com.konghq/unirest-java
-        implementation("com.konghq:unirest-java:3.14.1")
+        implementation("com.konghq:unirest-java:3.14.5")
 
         implementation("org.commonmark:commonmark:0.22.0")
         implementation("org.commonmark:commonmark-ext-gfm-tables:0.22.0")
