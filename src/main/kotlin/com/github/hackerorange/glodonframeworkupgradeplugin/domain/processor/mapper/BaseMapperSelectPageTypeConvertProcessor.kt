@@ -6,6 +6,9 @@ import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.project.Project
 import com.intellij.psi.*
 import com.intellij.psi.search.GlobalSearchScope
+import com.intellij.psi.util.InheritanceUtil
+
+private const val PAGE_QNAME = "com.baomidou.mybatisplus.core.metadata.IPage"
 
 class BaseMapperSelectPageTypeConvertProcessor : PsiFileProcessor {
 
@@ -90,6 +93,37 @@ class BaseMapperSelectPageTypeConvertProcessor : PsiFileProcessor {
                             )
                         }
                     }
+                }
+
+                override fun visitMethodCallExpression(psiMethodCallExpression: PsiMethodCallExpression) {
+
+                    val referenceName = psiMethodCallExpression.methodExpression.referenceName
+
+                    if ("stream" == referenceName || "forEach" == referenceName) {
+                        val qualifierExpression = psiMethodCallExpression.methodExpression.qualifierExpression ?: return
+                        val isPage =
+                            qualifierExpression.type?.let { InheritanceUtil.isInheritor(it, PAGE_QNAME) } ?: false
+
+                        if (isPage) {
+                            val createExpressionFromText =
+                                JavaPsiFacade.getInstance(project).elementFactory.createExpressionFromText(
+                                    "${qualifierExpression.text}.getRecords()",
+                                    null
+                                )
+
+                            methodCallStatementReplaceInfos.add(
+                                MethodCallStatementReplaceInfo(
+                                    qualifierExpression,
+                                    createExpressionFromText
+                                )
+                            )
+                        }
+                    }
+
+
+
+
+                    super.visitMethodCallExpression(psiMethodCallExpression)
                 }
 
                 override fun visitClass(aClass: PsiClass) {
@@ -178,7 +212,7 @@ class BaseMapperSelectPageTypeConvertProcessor : PsiFileProcessor {
 
     override fun init(project: Project) {
         mybatisPlusPageClass = JavaPsiFacade.getInstance(project).findClass(
-            "com.baomidou.mybatisplus.core.metadata.IPage",
+            PAGE_QNAME,
             GlobalSearchScope.allScope(project)
         )
         listClass = JavaPsiFacade.getInstance(project).findClass(
