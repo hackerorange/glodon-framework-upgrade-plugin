@@ -5,7 +5,7 @@ import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.project.Project
 import com.intellij.psi.*
 import com.intellij.psi.search.GlobalSearchScope
-import java.util.LinkedList
+import java.util.*
 
 class QueryWrapperOrderByProcessor : PsiFileProcessor {
 
@@ -188,12 +188,12 @@ class QueryWrapperOrderByProcessor : PsiFileProcessor {
         }
 
         if (argumentList.expressionCount == 2) {
-            var aaa = ""
+            var signature = ""
             for (expression in argumentList.expressions) {
-                aaa = (aaa + expression.type?.canonicalText + ";")
+                signature = (signature + expression.type?.canonicalText + ";")
             }
 
-            if ("java.lang.String;boolean;" == aaa) {
+            if (signature == "java.lang.String;boolean;" || signature == "java.lang.String;java.lang.Boolean;") {
 
                 val psiExpressions = ArrayList<PsiElement>()
 
