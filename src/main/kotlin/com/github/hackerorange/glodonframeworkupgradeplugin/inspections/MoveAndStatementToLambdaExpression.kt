@@ -224,22 +224,13 @@ class MoveAndStatementToLambdaExpression : AbstractBaseJavaLocalInspectionTool()
 
             val oldArgumentList = replacedExpression.argumentList.copy() as PsiExpressionList
 
-            var conditionExpression = JavaPsiFacade
-                .getInstance(project)
-                .elementFactory
-                .createExpressionFromText("true", null)
-
-            if (oldArgumentList.isEmpty.not()) {
-                val psiExpression: PsiExpression = oldArgumentList.expressions[0]
-                if (Companion.isBooleanType(psiExpression.type)) {
-                    conditionExpression = psiExpression.copy() as PsiExpression
-                    psiExpression.delete()
-                }
-
-            }
-
             replacedExpression.argumentList.expressions.forEach { it.delete() }
-            replacedExpression.argumentList.add(conditionExpression)
+            replacedExpression.argumentList.add(
+                JavaPsiFacade.getInstance(project).elementFactory.createExpressionFromText(
+                    "true",
+                    null
+                )
+            )
 
             var expressionInLambda = selectText.replace(subText, "")
 
