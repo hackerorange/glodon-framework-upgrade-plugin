@@ -212,6 +212,30 @@ class QueryWrapperOrderByProcessor : PsiFileProcessor {
         }
 
         if (argumentList.expressionCount == 3) {
+            var signature = ""
+            for (expression in argumentList.expressions) {
+                signature = (signature + expression.type?.canonicalText + ";")
+            }
+
+            if (signature == "boolean;java.lang.String;boolean;"
+                || signature == "boolean;java.lang.String;java.lang.Boolean;"
+                || signature == "java.lang.Boolean;java.lang.String;java.lang.Boolean;"
+
+            ) {
+
+                val psiExpressions = ArrayList<PsiElement>()
+
+                for (expression in argumentList.expressions) {
+                    psiExpressions.add(expression.copy())
+                }
+
+                argumentList.expressions.forEach { it.delete() }
+
+                argumentList.add(psiExpressions[0])
+                argumentList.add(psiExpressions[2])
+                argumentList.add(psiExpressions[1])
+            }
+
             var aaa = ""
             for (expression in argumentList.expressions) {
                 aaa = (aaa + expression.type?.canonicalText + ";")
