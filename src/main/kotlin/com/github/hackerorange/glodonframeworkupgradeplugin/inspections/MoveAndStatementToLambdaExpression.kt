@@ -63,6 +63,7 @@ class MoveAndStatementToLambdaExpression : AbstractBaseJavaLocalInspectionTool()
                         "Wrap lambda expression ",
                         ProblemHighlightType.ERROR,
                         IntroduceVariableErrorFixAction1(),
+                        IntroduceVariableErrorFixAction3(),
                         IntroduceVariableErrorFixAction(methodCallExpression)
                     )
                 } else {
@@ -183,6 +184,40 @@ class MoveAndStatementToLambdaExpression : AbstractBaseJavaLocalInspectionTool()
 
         }
     }
+
+    class IntroduceVariableErrorFixAction3 :
+        LocalQuickFix {
+
+
+        override fun startInWriteAction(): Boolean {
+            return false
+        }
+
+        override fun getFamilyName(): String {
+            return "[Upgrade MyBatis Plus] 将当前语句,直接修改为 apply 语句"
+        }
+
+        override fun applyFix(project: Project, descriptor: ProblemDescriptor) {
+
+            val psiElement = descriptor.psiElement
+
+            val psiMethodCallExpression =
+                PsiTreeUtil.getParentOfType(psiElement, PsiMethodCallExpression::class.java) ?: return
+
+            val replacedExpression = psiMethodCallExpression.copy() as PsiMethodCallExpression
+
+            println(replacedExpression.methodExpression.referenceNameElement)
+
+            val createIdentifier = JavaPsiFacade.getInstance(project).elementFactory.createIdentifier("apply")
+
+            replacedExpression.methodExpression.referenceNameElement?.replace(createIdentifier)
+
+            WriteCommandAction.runWriteCommandAction(project) {
+                psiMethodCallExpression.replace(replacedExpression)
+            }
+        }
+    }
+
 
     class IntroduceVariableErrorFixAction2 :
         LocalQuickFix {
