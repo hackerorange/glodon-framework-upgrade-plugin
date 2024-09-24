@@ -94,10 +94,9 @@ class ServiceImplProcessor : PsiFileProcessor {
 
                         methodNames.firstOrNull { expression.methodExpression.referenceName == it }?.let { _ ->
 
-                            val resolveMethod = expression.resolveMethod()
-                                ?: return
+                            val qualifierExpression = expression.methodExpression.qualifierExpression ?: return
 
-                            if (newServiceImplClass != resolveMethod.containingClass) {
+                            if (qualifierExpression.type?.isInheritorOf(newServiceImplClass!!.qualifiedName!!) == false) {
                                 return
                             }
                             var oldMethodCallExpression = expression.text
@@ -147,11 +146,10 @@ class ServiceImplProcessor : PsiFileProcessor {
                         super.visitMethodCallExpression(methodCallExpression)
 
                         if (methodCallExpression.methodExpression.referenceName == "selectCount") {
-                            val resolveMethod = methodCallExpression.resolveMethod()
-                            if (resolveMethod == null) {
-                                return
-                            }
-                            if (newServiceImplClass != resolveMethod.containingClass) {
+                            if (methodCallExpression.methodExpression.qualifierExpression?.type?.isInheritorOf(
+                                    newServiceImplClass!!.qualifiedName!!
+                                ) == false
+                            ) {
                                 return
                             }
                             var oldMethodCallExpression = methodCallExpression.text
@@ -203,11 +201,10 @@ class ServiceImplProcessor : PsiFileProcessor {
                         super.visitMethodCallExpression(methodCallExpression)
 
                         if (methodCallExpression.methodExpression.referenceName == "selectObj") {
-                            val resolveMethod = methodCallExpression.resolveMethod()
-                            if (resolveMethod == null) {
-                                return
-                            }
-                            if (newServiceImplClass != resolveMethod.containingClass) {
+                            if (methodCallExpression.methodExpression.qualifierExpression?.type?.isInheritorOf(
+                                    newServiceImplClass!!.qualifiedName!!
+                                ) == false
+                            ) {
                                 return
                             }
 
@@ -260,10 +257,10 @@ class ServiceImplProcessor : PsiFileProcessor {
                         if (methodCallExpression.methodExpression.referenceName != "insertBatch") {
                             return
                         }
-                        val resolveMethod = methodCallExpression.resolveMethod()
-                            ?: return
-
-                        if (newServiceImplClass != resolveMethod.containingClass) {
+                        if (methodCallExpression.methodExpression.qualifierExpression?.type?.isInheritorOf(
+                                newServiceImplClass!!.qualifiedName!!
+                            ) == false
+                        ) {
                             return
                         }
 
@@ -283,17 +280,6 @@ class ServiceImplProcessor : PsiFileProcessor {
         }
         // 替换方法调用语句
         replaceMethodCallStatements(project, methodCallStatementReplaceInfos)
-    }
-
-    private fun replaceImportStatements(
-        project: Project,
-        importStatementReplaceContexts: ArrayList<ImportStatementReplaceContext>
-    ) {
-        WriteCommandAction.runWriteCommandAction(project) {
-            importStatementReplaceContexts.forEach {
-                it.oldImportStatement.replace(it.newImportStatement)
-            }
-        }
     }
 
     private fun replaceMethodCallStatements(
@@ -337,7 +323,7 @@ class ServiceImplProcessor : PsiFileProcessor {
             if (!psiClass.isInheritor(oldServiceImplClass, true)) {
                 return Collections.emptyList()
             }
-            val result = ArrayList<MethodCallStatementReplaceInfo>();
+            val result = ArrayList<MethodCallStatementReplaceInfo>()
 
             psiClass.accept(object : JavaRecursiveElementVisitor() {
 
