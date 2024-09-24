@@ -1,6 +1,7 @@
 package com.github.hackerorange.glodonframeworkupgradeplugin.domain.processor.service
 
 import com.github.hackerorange.glodonframeworkupgradeplugin.domain.processor.PsiFileProcessor
+import com.intellij.codeInspection.isInheritorOf
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.project.Project
@@ -15,7 +16,7 @@ class ServiceImplProcessor : PsiFileProcessor {
         val newMethodCallExpression: PsiElement
     )
 
-    private var oldServiceImplClass: PsiClass? = null
+    //    private var oldServiceImplClass: PsiClass? = null
     private var newServiceImplClass: PsiClass? = null
 
     private var replaceWithMapperReturnTrueProcessors: ArrayList<ReplaceWithMapperReturnTrueProcessor> = ArrayList()
@@ -24,7 +25,7 @@ class ServiceImplProcessor : PsiFileProcessor {
     override fun processPsiFile(project: Project, psiFile: PsiFile) {
 
 
-        if (oldServiceImplClass == null || newServiceImplClass == null) {
+        if (newServiceImplClass == null) {
             return
         }
         if (psiFile !is PsiJavaFile) {
@@ -38,24 +39,24 @@ class ServiceImplProcessor : PsiFileProcessor {
         scene004(psiFile, project)
         scene005(psiFile, project)
 
-        changeImportStatement(project, psiFile)
+//        changeImportStatement(project, psiFile)
 
     }
 
-    private fun changeImportStatement(project: Project, psiFile: PsiFile) {
-        // 查找需要替换的类导入语句
-        val importStatementReplaceContexts = findImportStatementWhichNeedReplace(project, psiFile)
-
-        // 替换类导入语句
-        replaceImportStatements(project, importStatementReplaceContexts)
-    }
+//    private fun changeImportStatement(project: Project, psiFile: PsiFile) {
+//        // 查找需要替换的类导入语句
+//        val importStatementReplaceContexts = findImportStatementWhichNeedReplace(project, psiFile)
+//
+//        // 替换类导入语句
+//        replaceImportStatements(project, importStatementReplaceContexts)
+//    }
 
     private fun scene001(psiFile: PsiJavaFile, project: Project) {
         // 查找需要替换的方法调用语句
         val methodCallStatementReplaceInfos = ArrayList<MethodCallStatementReplaceInfo>()
         ApplicationManager.getApplication().runReadAction {
             for (psiClass in psiFile.classes) {
-                if (!psiClass.isInheritor(oldServiceImplClass!!, true)) {
+                if (!psiClass.isInheritor(newServiceImplClass!!, true)) {
                     continue
                 }
                 replaceWithMapperReturnTrueProcessors.forEach { replaceWithMapperReturnTrueProcessor ->
@@ -77,7 +78,7 @@ class ServiceImplProcessor : PsiFileProcessor {
         val methodCallStatementReplaceInfos = ArrayList<MethodCallStatementReplaceInfo>()
         ApplicationManager.getApplication().runReadAction {
             for (psiClass in psiFile.classes) {
-                if (!psiClass.isInheritor(oldServiceImplClass!!, true)) {
+                if (!psiClass.isInheritor(newServiceImplClass!!, true)) {
                     continue
                 }
                 val methodNames = ArrayList<String>()
@@ -96,7 +97,7 @@ class ServiceImplProcessor : PsiFileProcessor {
                             val resolveMethod = expression.resolveMethod()
                                 ?: return
 
-                            if (oldServiceImplClass != resolveMethod.containingClass) {
+                            if (newServiceImplClass != resolveMethod.containingClass) {
                                 return
                             }
                             var oldMethodCallExpression = expression.text
@@ -135,7 +136,7 @@ class ServiceImplProcessor : PsiFileProcessor {
         val methodCallStatementReplaceInfos = ArrayList<MethodCallStatementReplaceInfo>()
         ApplicationManager.getApplication().runReadAction {
             for (psiClass in psiFile.classes) {
-                if (!psiClass.isInheritor(oldServiceImplClass!!, true)) {
+                if (!psiClass.isInheritor(newServiceImplClass!!, true)) {
                     continue
                 }
 
@@ -150,7 +151,7 @@ class ServiceImplProcessor : PsiFileProcessor {
                             if (resolveMethod == null) {
                                 return
                             }
-                            if (oldServiceImplClass != resolveMethod.containingClass) {
+                            if (newServiceImplClass != resolveMethod.containingClass) {
                                 return
                             }
                             var oldMethodCallExpression = methodCallExpression.text
@@ -191,7 +192,7 @@ class ServiceImplProcessor : PsiFileProcessor {
         val methodCallStatementReplaceInfos = ArrayList<MethodCallStatementReplaceInfo>()
         ApplicationManager.getApplication().runReadAction {
             for (psiClass in psiFile.classes) {
-                if (!psiClass.isInheritor(oldServiceImplClass!!, true)) {
+                if (!psiClass.isInheritor(newServiceImplClass!!, true)) {
                     continue
                 }
 
@@ -206,7 +207,7 @@ class ServiceImplProcessor : PsiFileProcessor {
                             if (resolveMethod == null) {
                                 return
                             }
-                            if (oldServiceImplClass != resolveMethod.containingClass) {
+                            if (newServiceImplClass != resolveMethod.containingClass) {
                                 return
                             }
 
@@ -246,7 +247,7 @@ class ServiceImplProcessor : PsiFileProcessor {
         val methodCallStatementReplaceInfos = ArrayList<MethodCallStatementReplaceInfo>()
         ApplicationManager.getApplication().runReadAction {
             for (psiClass in psiFile.classes) {
-                if (!psiClass.isInheritor(oldServiceImplClass!!, true)) {
+                if (!psiClass.isInheritor(newServiceImplClass!!, true)) {
                     continue
                 }
 
@@ -262,7 +263,7 @@ class ServiceImplProcessor : PsiFileProcessor {
                         val resolveMethod = methodCallExpression.resolveMethod()
                             ?: return
 
-                        if (oldServiceImplClass != resolveMethod.containingClass) {
+                        if (newServiceImplClass != resolveMethod.containingClass) {
                             return
                         }
 
@@ -311,45 +312,14 @@ class ServiceImplProcessor : PsiFileProcessor {
         }
     }
 
-    private fun findImportStatementWhichNeedReplace(
-        project: Project,
-        psiFile: PsiFile
-    ): ArrayList<ImportStatementReplaceContext> {
-        val importStatementReplaceContexts = ArrayList<ImportStatementReplaceContext>()
-
-        ApplicationManager.getApplication().runReadAction {
-            psiFile.accept(object : JavaRecursiveElementVisitor() {
-
-                override fun visitImportStatement(statement: PsiImportStatement) {
-                    if (statement.text == "import ${oldServiceImplClass!!.qualifiedName};") {
-                        val newImportStatement = JavaPsiFacade.getInstance(project).elementFactory
-                            .createImportStatement(newServiceImplClass!!)
-
-                        importStatementReplaceContexts.add(
-                            ImportStatementReplaceContext(
-                                statement,
-                                newImportStatement
-                            )
-                        )
-                    }
-
-                }
-            })
-        }
-        return importStatementReplaceContexts
-    }
-
     override fun init(project: Project) {
-        oldServiceImplClass = JavaPsiFacade.getInstance(project).findClass(
-            "com.baomidou.mybatisplus.service.impl.ServiceImpl",
-            GlobalSearchScope.allScope(project)
-        )
+
         newServiceImplClass = JavaPsiFacade.getInstance(project).findClass(
             "com.baomidou.mybatisplus.extension.service.impl.ServiceImpl",
             GlobalSearchScope.allScope(project)
         )
 
-        oldServiceImplClass?.let {
+        newServiceImplClass?.let {
             replaceWithMapperReturnTrueProcessors.add(ReplaceWithMapperReturnTrueProcessor("insert", it))
             replaceWithMapperReturnTrueProcessors.add(ReplaceWithMapperReturnTrueProcessor("delete", it))
             replaceWithMapperReturnTrueProcessors.add(ReplaceWithMapperReturnTrueProcessor("deleteById", it))
@@ -376,10 +346,10 @@ class ServiceImplProcessor : PsiFileProcessor {
                     if (expression.methodExpression.referenceName != methodName) {
                         return
                     }
-                    val resolveMethod = expression.resolveMethod()
-                        ?: return
 
-                    if (oldServiceImplClass != resolveMethod.containingClass) {
+                    val qualifierExpression = expression.methodExpression.qualifierExpression ?: return
+
+                    if (qualifierExpression.type?.isInheritorOf(oldServiceImplClass.qualifiedName!!) == false) {
                         return
                     }
 
