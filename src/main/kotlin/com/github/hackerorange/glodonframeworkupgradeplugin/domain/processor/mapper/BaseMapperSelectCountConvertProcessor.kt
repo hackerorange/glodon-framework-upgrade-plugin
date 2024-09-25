@@ -9,10 +9,6 @@ import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.util.PsiTreeUtil
 
 class BaseMapperSelectCountConvertProcessor : PsiFileProcessor {
-    class MethodCallStatementReplaceInfo(
-        val oldMethodCallExpression: PsiElement,
-        val newMethodCallExpression: PsiElement
-    )
 
     private var mybatisPlusPageClass: PsiClass? = null
     private var listClass: PsiClass? = null

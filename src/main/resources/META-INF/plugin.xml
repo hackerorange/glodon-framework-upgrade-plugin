@@ -11,7 +11,7 @@
     <!--必须为企业版-->
     <depends>com.intellij.modules.lang</depends>
 
-<!--    <depends>com.intellij.modules.vcs</depends>-->
+    <!--    <depends>com.intellij.modules.vcs</depends>-->
 
     <depends>Git4Idea</depends>
 
@@ -34,6 +34,12 @@
                          enabledByDefault="true"
                          implementationClass="com.github.hackerorange.glodonframeworkupgradeplugin.inspections.MoveAndStatementToLambdaExpression"
                          displayName="[Upgrade MyBatis Plus] 将 add 方法移动到 lambda 表达式中"
+                         groupName="MyBatis Plus 升级"/>
+        <localInspection id="MybatisParamInspection"
+                         language="JAVA"
+                         enabledByDefault="true"
+                         implementationClass="com.github.hackerorange.glodonframeworkupgradeplugin.inspections.MybatisParamInspection"
+                         displayName="[ MyBatis Plus Upgrade ] 检查 BaseMapper 的方法是否有 @Param 参数"
                          groupName="MyBatis Plus 升级"/>
 
         <intentionAction>

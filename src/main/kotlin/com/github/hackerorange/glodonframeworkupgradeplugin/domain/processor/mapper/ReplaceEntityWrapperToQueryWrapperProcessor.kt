@@ -7,6 +7,7 @@ import com.intellij.openapi.project.Project
 import com.intellij.psi.*
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.util.InheritanceUtil
+import java.util.LinkedList
 
 class ReplaceEntityWrapperToQueryWrapperProcessor : PsiFileProcessor {
 
@@ -25,8 +26,8 @@ class ReplaceEntityWrapperToQueryWrapperProcessor : PsiFileProcessor {
 
 
     private fun processNewExpressionStatement(psiFile: PsiFile, project: Project) {
-        val wrapperReplaceContexts: ArrayList<WrapperReplaceContext> = ArrayList()
 
+        val wrapperReplaceContexts: LinkedList<WrapperReplaceContext> = LinkedList()
 
         ApplicationManager.getApplication().runReadAction {
 
@@ -79,7 +80,7 @@ class ReplaceEntityWrapperToQueryWrapperProcessor : PsiFileProcessor {
                     val newElement =
                         JavaPsiFacade.getInstance(project).elementFactory.createExpressionFromText(
                             "new ${newEntityWrapperClass!!.qualifiedName}<${entityClass.qualifiedName}>()\n",
-                            psiNewExpression
+                            null
                         )
 
                     wrapperReplaceContexts.add(WrapperReplaceContext(psiNewExpression, newElement))

@@ -13,11 +13,6 @@ private const val PAGE_QNAME = "com.baomidou.mybatisplus.core.metadata.IPage"
 
 class BaseMapperSelectPageTypeConvertProcessor : PsiFileProcessor {
 
-    class MethodCallStatementReplaceInfo(
-        val oldMethodCallExpression: PsiElement,
-        val newMethodCallExpression: PsiElement
-    )
-
     private var mybatisPlusPageClass: PsiClass? = null
     private var listClass: PsiClass? = null
 

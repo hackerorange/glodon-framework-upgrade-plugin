@@ -10,6 +10,7 @@ import com.github.hackerorange.glodonframeworkupgradeplugin.domain.processor.map
 import com.github.hackerorange.glodonframeworkupgradeplugin.domain.processor.mapper.BaseMapperSelectPageTypeConvertProcessor
 import com.github.hackerorange.glodonframeworkupgradeplugin.domain.processor.mapper.ReplaceEntityWrapperToQueryWrapperProcessor
 import com.github.hackerorange.glodonframeworkupgradeplugin.domain.processor.service.ServiceImplProcessor
+import com.github.hackerorange.glodonframeworkupgradeplugin.domain.processor.service.ServiceImplProcessor2
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.application.ApplicationManager
@@ -42,6 +43,7 @@ class UpgradeMorrowFramework : AnAction() {
         processors.add(ClassImportPsiFileProcessor())
         processors.add(ReplaceEntityWrapperToQueryWrapperProcessor())
         processors.add(ServiceImplProcessor())
+        processors.add(ServiceImplProcessor2())
         processors.add(QueryWrapperOrderByProcessor())
         processors.add(BaseMapperSelectPageTypeConvertProcessor())
         processors.add(BaseMapperSelectCountConvertProcessor())

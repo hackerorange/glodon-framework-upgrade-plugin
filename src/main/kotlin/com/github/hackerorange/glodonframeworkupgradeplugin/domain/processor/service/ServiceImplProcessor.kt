@@ -1,20 +1,16 @@
 package com.github.hackerorange.glodonframeworkupgradeplugin.domain.processor.service
 
 import com.github.hackerorange.glodonframeworkupgradeplugin.domain.processor.PsiFileProcessor
-import com.intellij.codeInspection.isInheritorOf
+import com.github.hackerorange.glodonframeworkupgradeplugin.domain.processor.mapper.MethodCallStatementReplaceInfo
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.project.Project
 import com.intellij.psi.*
 import com.intellij.psi.search.GlobalSearchScope
+import com.intellij.psi.util.InheritanceUtil
 import java.util.*
 
 class ServiceImplProcessor : PsiFileProcessor {
-    class ImportStatementReplaceContext(val oldImportStatement: PsiElement, val newImportStatement: PsiElement)
-    class MethodCallStatementReplaceInfo(
-        val oldMethodCallExpression: PsiElement,
-        val newMethodCallExpression: PsiElement
-    )
 
     //    private var oldServiceImplClass: PsiClass? = null
     private var newServiceImplClass: PsiClass? = null
@@ -94,11 +90,20 @@ class ServiceImplProcessor : PsiFileProcessor {
 
                         methodNames.firstOrNull { expression.methodExpression.referenceName == it }?.let { _ ->
 
-                            val qualifierExpression = expression.methodExpression.qualifierExpression ?: return
+//                            val qualifierExpression = expression.methodExpression.qualifierExpression ?: return
 
-                            if (qualifierExpression.type?.isInheritorOf(newServiceImplClass!!.qualifiedName!!) == false) {
-                                return
+                            val qualifierExpression = expression.methodExpression.qualifierExpression
+
+                            if (qualifierExpression != null) {
+                                if (qualifierExpression.type?.let {
+                                        InheritanceUtil.isInheritor(
+                                            it, newServiceImplClass!!.qualifiedName!!
+                                        )
+                                    } == false) {
+                                    return
+                                }
                             }
+
                             var oldMethodCallExpression = expression.text
 
                             if (oldMethodCallExpression.startsWith("this.")) {
@@ -146,11 +151,17 @@ class ServiceImplProcessor : PsiFileProcessor {
                         super.visitMethodCallExpression(methodCallExpression)
 
                         if (methodCallExpression.methodExpression.referenceName == "selectCount") {
-                            if (methodCallExpression.methodExpression.qualifierExpression?.type?.isInheritorOf(
-                                    newServiceImplClass!!.qualifiedName!!
-                                ) == false
-                            ) {
-                                return
+                            val qualifierExpression = methodCallExpression.methodExpression.qualifierExpression
+
+                            if (qualifierExpression != null) {
+                                if (qualifierExpression.type?.let {
+                                        InheritanceUtil.isInheritor(
+                                            it,
+                                            newServiceImplClass!!.qualifiedName!!
+                                        )
+                                    } == false) {
+                                    return
+                                }
                             }
                             var oldMethodCallExpression = methodCallExpression.text
 
@@ -201,11 +212,17 @@ class ServiceImplProcessor : PsiFileProcessor {
                         super.visitMethodCallExpression(methodCallExpression)
 
                         if (methodCallExpression.methodExpression.referenceName == "selectObj") {
-                            if (methodCallExpression.methodExpression.qualifierExpression?.type?.isInheritorOf(
-                                    newServiceImplClass!!.qualifiedName!!
-                                ) == false
-                            ) {
-                                return
+                            val qualifierExpression = methodCallExpression.methodExpression.qualifierExpression
+
+                            if (qualifierExpression != null) {
+                                if (qualifierExpression.type?.let {
+                                        InheritanceUtil.isInheritor(
+                                            it,
+                                            newServiceImplClass!!.qualifiedName!!
+                                        )
+                                    } == false) {
+                                    return
+                                }
                             }
 
                             var oldMethodCallExpression = methodCallExpression.text
@@ -257,11 +274,17 @@ class ServiceImplProcessor : PsiFileProcessor {
                         if (methodCallExpression.methodExpression.referenceName != "insertBatch") {
                             return
                         }
-                        if (methodCallExpression.methodExpression.qualifierExpression?.type?.isInheritorOf(
-                                newServiceImplClass!!.qualifiedName!!
-                            ) == false
-                        ) {
-                            return
+                        val qualifierExpression = methodCallExpression.methodExpression.qualifierExpression
+
+                        if (qualifierExpression != null) {
+                            if (qualifierExpression.type?.let {
+                                    InheritanceUtil.isInheritor(
+                                        it,
+                                        newServiceImplClass!!.qualifiedName!!
+                                    )
+                                } == false) {
+                                return
+                            }
                         }
 
                         val newStatement = JavaPsiFacade.getInstance(project).elementFactory
@@ -316,11 +339,11 @@ class ServiceImplProcessor : PsiFileProcessor {
 
     class ReplaceWithMapperReturnTrueProcessor(
         private val methodName: String,
-        private var oldServiceImplClass: PsiClass
+        private var newServiceImplClass: PsiClass
     ) {
 
         fun processRename(project: Project, psiClass: PsiClass): List<MethodCallStatementReplaceInfo> {
-            if (!psiClass.isInheritor(oldServiceImplClass, true)) {
+            if (!psiClass.isInheritor(newServiceImplClass, true)) {
                 return Collections.emptyList()
             }
             val result = ArrayList<MethodCallStatementReplaceInfo>()
@@ -333,11 +356,19 @@ class ServiceImplProcessor : PsiFileProcessor {
                         return
                     }
 
-                    val qualifierExpression = expression.methodExpression.qualifierExpression ?: return
+                    val qualifierExpression = expression.methodExpression.qualifierExpression
 
-                    if (qualifierExpression.type?.isInheritorOf(oldServiceImplClass.qualifiedName!!) == false) {
-                        return
+                    if (qualifierExpression != null) {
+                        if (qualifierExpression.type?.let {
+                                InheritanceUtil.isInheritor(
+                                    it,
+                                    newServiceImplClass.qualifiedName!!
+                                )
+                            } == false) {
+                            return
+                        }
                     }
+
 
                     var oldMethodCallExpression = expression.text
 
