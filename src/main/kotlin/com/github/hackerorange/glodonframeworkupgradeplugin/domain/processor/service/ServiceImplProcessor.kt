@@ -5,6 +5,9 @@ import com.github.hackerorange.glodonframeworkupgradeplugin.domain.processor.map
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.project.Project
+import com.intellij.patterns.ElementPattern
+import com.intellij.patterns.PsiJavaPatterns
+import com.intellij.patterns.StandardPatterns
 import com.intellij.psi.*
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.util.InheritanceUtil
@@ -378,13 +381,38 @@ class ServiceImplProcessor : PsiFileProcessor {
                     if (oldMethodCallExpression.startsWith("super.")) {
                         oldMethodCallExpression = oldMethodCallExpression.substring(6)
                     }
-                    val createReferenceFromText =
-                        JavaPsiFacade.getInstance(project).elementFactory.createExpressionFromText(
-                            "com.baomidou.mybatisplus.extension.toolkit.SqlHelper.retBool(this.baseMapper.$oldMethodCallExpression)",
-                            null
+
+                    val elementPattern: ElementPattern<PsiElement> = StandardPatterns
+                        .or(
+                            // 参数中
+                            PsiJavaPatterns.psiElement()
+                                .inside(PsiJavaPatterns.psiParameter()),
+                            // 定义语句
+                            PsiJavaPatterns.psiElement()
+                                .inside(PsiJavaPatterns.psiElement(PsiDeclarationStatement::class.java)),
+                            // 赋值语句
+                            PsiJavaPatterns.psiElement()
+                                .inside(PsiJavaPatterns.psiElement(PsiAssignmentExpression::class.java)),
                         )
 
-                    result.add(MethodCallStatementReplaceInfo(expression, createReferenceFromText))
+                    if (elementPattern.accepts(expression)) {
+
+                        val createReferenceFromText = JavaPsiFacade.getInstance(project).elementFactory
+                            .createExpressionFromText(
+                                "com.baomidou.mybatisplus.extension.toolkit.SqlHelper.retBool(this.baseMapper.$oldMethodCallExpression)",
+                                null
+                            )
+
+                        result.add(MethodCallStatementReplaceInfo(expression, createReferenceFromText))
+                    } else {
+
+                        val createReferenceFromText =
+                            JavaPsiFacade.getInstance(project).elementFactory
+                                .createExpressionFromText("this.baseMapper.$oldMethodCallExpression", null)
+
+                        result.add(MethodCallStatementReplaceInfo(expression, createReferenceFromText))
+                    }
+
 
                 }
             })
