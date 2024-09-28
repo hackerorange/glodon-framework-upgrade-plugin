@@ -317,54 +317,56 @@ class ServiceImplProcessor : PsiFileProcessor {
         // 查找需要替换的方法调用语句
         val methodCallStatementReplaceInfos = ArrayList<MethodCallStatementReplaceInfo>()
 
-        psiFile.accept(object : JavaRecursiveElementVisitor() {
+        ApplicationManager.getApplication().runReadAction {
+            psiFile.accept(object : JavaRecursiveElementVisitor() {
 
-            override fun visitMethodCallExpression(methodCallExpression: PsiMethodCallExpression) {
+                override fun visitMethodCallExpression(methodCallExpression: PsiMethodCallExpression) {
 
-                super.visitMethodCallExpression(methodCallExpression)
+                    super.visitMethodCallExpression(methodCallExpression)
 
-                if (methodCallExpression.methodExpression.referenceName != "retBool") {
-                    return
-                }
-                val qualifierExpression = methodCallExpression.methodExpression.qualifierExpression
-
-                if (qualifierExpression != null) {
-                    if (qualifierExpression.type?.let {
-                            InheritanceUtil.isInheritor(
-                                it,
-                                sqlHelperClass!!.qualifiedName!!
-                            )
-                        } == false) {
+                    if (methodCallExpression.methodExpression.referenceName != "retBool") {
                         return
                     }
-                }
+                    val qualifierExpression = methodCallExpression.methodExpression.qualifierExpression
 
-                val elementPattern: ElementPattern<PsiElement> = StandardPatterns
-                    .or(
-                        // 参数中
-                        PsiJavaPatterns.psiElement()
-                            .inside(PsiJavaPatterns.psiParameter()),
-                        // 定义语句
-                        PsiJavaPatterns.psiElement()
-                            .inside(PsiJavaPatterns.psiElement(PsiDeclarationStatement::class.java)),
-                        // 赋值语句
-                        PsiJavaPatterns.psiElement()
-                            .inside(PsiJavaPatterns.psiElement(PsiAssignmentExpression::class.java)),
-                    )
-                if(elementPattern.accepts(methodCallExpression)){
-                    return
-                }
+                    if (qualifierExpression != null) {
+                        if (qualifierExpression.type?.let {
+                                InheritanceUtil.isInheritor(
+                                    it,
+                                    sqlHelperClass!!.qualifiedName!!
+                                )
+                            } == false) {
+                            return
+                        }
+                    }
 
-                if(methodCallExpression.argumentList.expressionCount==1){
-                    methodCallStatementReplaceInfos.add(
-                        MethodCallStatementReplaceInfo(
-                            methodCallExpression,
-                            methodCallExpression.argumentList.expressions[0].copy()
+                    val elementPattern: ElementPattern<PsiElement> = StandardPatterns
+                        .or(
+                            // 参数中
+                            PsiJavaPatterns.psiElement()
+                                .inside(PsiJavaPatterns.psiParameter()),
+                            // 定义语句
+                            PsiJavaPatterns.psiElement()
+                                .inside(PsiJavaPatterns.psiElement(PsiDeclarationStatement::class.java)),
+                            // 赋值语句
+                            PsiJavaPatterns.psiElement()
+                                .inside(PsiJavaPatterns.psiElement(PsiAssignmentExpression::class.java)),
                         )
-                    )
+                    if (elementPattern.accepts(methodCallExpression)) {
+                        return
+                    }
+
+                    if (methodCallExpression.argumentList.expressionCount == 1) {
+                        methodCallStatementReplaceInfos.add(
+                            MethodCallStatementReplaceInfo(
+                                methodCallExpression,
+                                methodCallExpression.argumentList.expressions[0].copy()
+                            )
+                        )
+                    }
                 }
-            }
-        })
+            })
+        }
         // 替换方法调用语句
         replaceMethodCallStatements(project, methodCallStatementReplaceInfos)
     }
