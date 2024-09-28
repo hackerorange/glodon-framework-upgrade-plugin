@@ -17,6 +17,7 @@ class ServiceImplProcessor : PsiFileProcessor {
 
     //    private var oldServiceImplClass: PsiClass? = null
     private var newServiceImplClass: PsiClass? = null
+    private var sqlHelperClass: PsiClass? = null
 
     private var replaceWithMapperReturnTrueProcessors: ArrayList<ReplaceWithMapperReturnTrueProcessor> = ArrayList()
 
@@ -37,6 +38,7 @@ class ServiceImplProcessor : PsiFileProcessor {
         scene003(psiFile, project)
         scene004(psiFile, project)
         scene005(psiFile, project)
+        scene006(psiFile, project)
 
 //        changeImportStatement(project, psiFile)
 
@@ -308,6 +310,65 @@ class ServiceImplProcessor : PsiFileProcessor {
         replaceMethodCallStatements(project, methodCallStatementReplaceInfos)
     }
 
+    private fun scene006(psiFile: PsiJavaFile, project: Project) {
+        if(sqlHelperClass==null){
+            return
+        }
+        // 查找需要替换的方法调用语句
+        val methodCallStatementReplaceInfos = ArrayList<MethodCallStatementReplaceInfo>()
+
+        psiFile.accept(object : JavaRecursiveElementVisitor() {
+
+            override fun visitMethodCallExpression(methodCallExpression: PsiMethodCallExpression) {
+
+                super.visitMethodCallExpression(methodCallExpression)
+
+                if (methodCallExpression.methodExpression.referenceName != "retBool") {
+                    return
+                }
+                val qualifierExpression = methodCallExpression.methodExpression.qualifierExpression
+
+                if (qualifierExpression != null) {
+                    if (qualifierExpression.type?.let {
+                            InheritanceUtil.isInheritor(
+                                it,
+                                sqlHelperClass!!.qualifiedName!!
+                            )
+                        } == false) {
+                        return
+                    }
+                }
+
+                val elementPattern: ElementPattern<PsiElement> = StandardPatterns
+                    .or(
+                        // 参数中
+                        PsiJavaPatterns.psiElement()
+                            .inside(PsiJavaPatterns.psiParameter()),
+                        // 定义语句
+                        PsiJavaPatterns.psiElement()
+                            .inside(PsiJavaPatterns.psiElement(PsiDeclarationStatement::class.java)),
+                        // 赋值语句
+                        PsiJavaPatterns.psiElement()
+                            .inside(PsiJavaPatterns.psiElement(PsiAssignmentExpression::class.java)),
+                    )
+                if(elementPattern.accepts(methodCallExpression)){
+                    return
+                }
+
+                if(methodCallExpression.argumentList.expressionCount==1){
+                    methodCallStatementReplaceInfos.add(
+                        MethodCallStatementReplaceInfo(
+                            methodCallExpression,
+                            methodCallExpression.argumentList.expressions[0].copy()
+                        )
+                    )
+                }
+            }
+        })
+        // 替换方法调用语句
+        replaceMethodCallStatements(project, methodCallStatementReplaceInfos)
+    }
+
     private fun replaceMethodCallStatements(
         project: Project,
         importStatementReplaceContexts: ArrayList<MethodCallStatementReplaceInfo>
@@ -328,6 +389,11 @@ class ServiceImplProcessor : PsiFileProcessor {
 
         newServiceImplClass = JavaPsiFacade.getInstance(project).findClass(
             "com.baomidou.mybatisplus.extension.service.impl.ServiceImpl",
+            GlobalSearchScope.allScope(project)
+        )
+
+        sqlHelperClass = JavaPsiFacade.getInstance(project).findClass(
+            "com.baomidou.mybatisplus.extension.toolkit.SqlHelper",
             GlobalSearchScope.allScope(project)
         )
 

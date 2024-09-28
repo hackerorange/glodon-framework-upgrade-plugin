@@ -51,8 +51,8 @@ class ClassImportPsiFileProcessor : PsiFileProcessor {
         temp["com.baomidou.mybatisplus.enums.FieldStrategy"] = "com.baomidou.mybatisplus.annotation.FieldStrategy"
         temp["com.baomidou.mybatisplus.activerecord.Model"] = "com.baomidou.mybatisplus.extension.activerecord.Model"
         temp["com.baomidou.mybatisplus.service.impl.ServiceImpl"] = "com.baomidou.mybatisplus.extension.service.impl.ServiceImpl"
-        temp["org.apache.commons.collections4.CollectionUtils"] = "org.apache.commons.collections.CollectionUtils"
-        temp["org.apache.commons.collections4.MapUtils"] = "org.apache.commons.collections.MapUtils"
+        temp["org.apache.commons.collections.CollectionUtils"] = "org.apache.commons.collections4.CollectionUtils"
+        temp["org.apache.commons.collections.MapUtils"] = "org.apache.commons.collections4.MapUtils"
 
         for (mutableEntry in temp) {
             val newBaseMapperClass = JavaPsiFacade.getInstance(project).findClass(
