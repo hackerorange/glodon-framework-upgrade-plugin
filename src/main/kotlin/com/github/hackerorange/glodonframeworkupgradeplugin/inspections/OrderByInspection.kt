@@ -92,7 +92,7 @@ class OrderByInspection : AbstractBaseJavaLocalInspectionTool() {
                             }
                             //
                             if (signature == "java.lang.Boolean;java.lang.String;") {
-                                val psiExpression: PsiExpression = argumentList.expressions[1]
+                                val psiExpression: PsiExpression = argumentList.expressions[0]
 
                                 if (psiExpression.text == "true" || psiExpression.text == "Boolean.TRUE") {
 
