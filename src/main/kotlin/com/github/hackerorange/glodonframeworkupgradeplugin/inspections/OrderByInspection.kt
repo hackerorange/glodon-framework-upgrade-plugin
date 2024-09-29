@@ -72,6 +72,40 @@ class OrderByInspection : AbstractBaseJavaLocalInspectionTool() {
                         }
                     }
                 }
+
+                if (methodCallExpression.methodExpression.referenceName == "orderByAsc" || methodCallExpression.methodExpression.referenceName == "orderByDesc") {
+                    val type = methodCallExpression.methodExpression.qualifierExpression?.type ?: return
+                    if (type is PsiClassType) {
+                        val psiClass = type.resolve() ?: return
+                        if (psiClass.isInheritor(baseWrapperClass, true)) {
+                            var signature = ""
+                            val argumentList = methodCallExpression.argumentList
+                            for (expression in argumentList.expressions) {
+                                var tempType = expression.type
+                                if (tempType is PsiPrimitiveType) {
+                                    tempType = tempType.getBoxedType(expression)
+                                }
+
+                                val currentTypeCanonicalText = tempType?.canonicalText
+
+                                signature = ("$signature$currentTypeCanonicalText;")
+                            }
+                            //
+                            if (signature == "java.lang.Boolean;java.lang.String;") {
+                                val psiExpression: PsiExpression = argumentList.expressions[1]
+
+                                if (psiExpression.text == "true" || psiExpression.text == "Boolean.TRUE") {
+
+                                    problemsHolder.registerProblem(
+                                        psiExpression,
+                                        "此条件参数永远为 true ，移除此条件参数",
+                                        RemoveConditionParamForOrderBy()
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
     }
@@ -98,7 +132,7 @@ class OrderByInspection : AbstractBaseJavaLocalInspectionTool() {
 
     class ReplaceWithOrderByDesc : LocalQuickFix {
         override fun getFamilyName(): String {
-            return "替换为 orderByAsc 方法调用"
+            return "替换为 orderByDesc 方法调用"
         }
 
         override fun applyFix(project: Project, descriptor: ProblemDescriptor) {
@@ -109,6 +143,17 @@ class OrderByInspection : AbstractBaseJavaLocalInspectionTool() {
 
             psiMethodCallExpression.argumentList.expressions[1].delete()
             referenceNameElement.replace(JavaPsiFacade.getInstance(project).elementFactory.createIdentifier("orderByDesc"))
+        }
+    }
+
+    class RemoveConditionParamForOrderBy : LocalQuickFix {
+        override fun getFamilyName(): String {
+            return "此条件参数永远为 true ，移除此条件参数"
+        }
+
+        override fun applyFix(project: Project, descriptor: ProblemDescriptor) {
+            val expression: PsiExpression = descriptor.psiElement as PsiExpression
+            expression.delete()
         }
     }
 
