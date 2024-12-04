@@ -73,17 +73,17 @@ class ServiceImplProcessor2 : PsiFileProcessor {
                     }
                     val resolveMethod = expression.resolveMethod()
 
-                    if (resolveMethod == null) {
-                        val createReferenceFromText =
-                            JavaPsiFacade.getInstance(project)
-                                .elementFactory
-                                .createExpressionFromText("${qualifierExpression.text}.getBaseMapper()", null)
-
-                        val element = MethodCallStatementReplaceInfo(qualifierExpression, createReferenceFromText)
-
-                        methodCallStatementReplaceInfos.add(element)
-
+                    if (resolveMethod != null) {
+                        return
                     }
+                    val createReferenceFromText =
+                        JavaPsiFacade.getInstance(project)
+                            .elementFactory
+                            .createExpressionFromText("${qualifierExpression.text}.getBaseMapper()", null)
+
+                    val element = MethodCallStatementReplaceInfo(qualifierExpression, createReferenceFromText)
+
+                    methodCallStatementReplaceInfos.add(element)
                 }
             })
 
